@@ -1,0 +1,22 @@
+name: 'MPTCP Upstream TopGit Action'
+description: 'Manage MPTCP TopGit tree: sync with upstream, export'
+inputs:
+  force-sync:
+    description: 'Set it to 1 to force a sync even if net-next is already up to date'
+    required: false
+    default: '0'
+  not-base:
+    description: 'Set it to 1 to force a sync without updating the base from upstream'
+    required: false
+    default: '0'
+  validate-each-topic:
+    description: 'Set it to 1 to validate the compilation of each topic'
+    required: false
+    default: '1'
+  ccache-maxsize:
+    description: 'Set the maximum size for CCache in /ccache dir'
+    required: false
+    default: '2G'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

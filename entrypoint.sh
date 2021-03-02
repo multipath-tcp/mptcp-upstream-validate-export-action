@@ -138,7 +138,8 @@ check_sparse_version() { local last curr
 tg_update_base() { local sha_before_update
 	git_checkout "${TG_TOPIC_BASE}"
 
-	git pull --ff-only "${GIT_REMOTE_GITHUB_NAME}" "${TG_TOPIC_BASE}"
+	git pull --no-stat --ff-only \
+		"${GIT_REMOTE_GITHUB_NAME}" "${TG_TOPIC_BASE}"
 
 	if [ "${UPD_TG_NOT_BASE}" = 1 ]; then
 		return 0
@@ -147,7 +148,8 @@ tg_update_base() { local sha_before_update
 	sha_before_update=$(git_get_sha HEAD)
 
 	# this branch has to be in sync with upstream, no merge
-	git pull --ff-only "${GIT_REMOTE_NET_NEXT_URL}" "${GIT_REMOTE_NET_NEXT_BRANCH}"
+	git pull --no-stat --ff-only \
+		"${GIT_REMOTE_NET_NEXT_URL}" "${GIT_REMOTE_NET_NEXT_BRANCH}"
 	if [ "${UPD_TG_FORCE_SYNC}" != 1 ] && \
 	   [ "${sha_before_update}" = "$(git_get_sha HEAD)" ]; then
 		echo "Already sync with ${GIT_REMOTE_NET_NEXT_URL} (${sha_before_update})"
@@ -470,7 +472,8 @@ tg_export() { local current_date tag
 tg_for_review() { local tg_conflict_files
 	git_checkout "${TG_FOR_REVIEW_BRANCH}"
 
-	git pull "${GIT_REMOTE_GITHUB_NAME}" "${TG_FOR_REVIEW_BRANCH}"
+	git pull --no-stat --ff-only \
+		"${GIT_REMOTE_GITHUB_NAME}" "${TG_FOR_REVIEW_BRANCH}"
 
 	if ! git merge --no-edit --signoff "${TG_TOPIC_TOP}"; then
 		# the only possible conflict would be with the topgit files, manage this

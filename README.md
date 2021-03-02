@@ -9,21 +9,21 @@ publish the new tree to the repo.
 
 ## Inputs
 
-### `force-sync`
+### `force_sync`
 
 Set it to 1 to force a sync even if net-next is already up to date. Default:
 `0`.
 
-### `not-base`
+### `not_base`
 
 Set it to 1 to force a sync without updating the base from upstream. Default:
 `0`.
 
-### `validate-each-topic`
+### `validate_each_topic`
 
 Set it to 1 to validate the compilation of each topic. Default: `1`.
 
-### `ccache-maxsize`
+### `ccache_maxsize`
 
 Set the maximum size for CCache in `/ccache` dir. Default: `2G`.
 
@@ -32,5 +32,5 @@ Set the maximum size for CCache in `/ccache` dir. Default: `2G`.
 ```yaml
 uses: multipath-tcp/mptcp-upstream-topgit-action@main
 with:
-  validate-each-topic: '1'
+  validate_each_topic: '1'
 ```

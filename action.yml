@@ -14,7 +14,7 @@ inputs:
     required: false
     default: '1'
   ccache_maxsize:
-    description: 'Set the maximum size for CCache in ~/.ccache dir'
+    description: 'Set the maximum size for CCache in ${{ github.workspace }}/.ccache dir'
     required: false
     default: '2G'
 runs:

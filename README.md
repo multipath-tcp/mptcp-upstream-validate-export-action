@@ -26,7 +26,7 @@ Set it to 1 to validate the compilation of each topic. Default: `1`.
 ### `ccache_maxsize`
 
 Set the maximum size for CCache in `${{ github.workspace }}/.ccache` dir.
-Default: `2G`.
+Default: `5G`.
 
 ## Example usage
 

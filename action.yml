@@ -16,7 +16,7 @@ inputs:
   ccache_maxsize:
     description: 'Set the maximum size for CCache in ${{ github.workspace }}/.ccache dir'
     required: false
-    default: '2G'
+    default: '5G'
 runs:
   using: 'docker'
   image: 'Dockerfile'

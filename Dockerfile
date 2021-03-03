@@ -38,7 +38,6 @@ RUN cd /tmp && \
 # CCache for quicker builds but still with default colours
 ENV PATH "/usr/lib/ccache:${PATH}"
 ENV CCACHE_COMPRESS "true"
-ENV CCACHE_DIR "/ccache"
 ENV GCC_COLORS "error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01"
 # Remove the timestamp to improve CCache hit
 ENV KBUILD_BUILD_TIMESTAMP "0"

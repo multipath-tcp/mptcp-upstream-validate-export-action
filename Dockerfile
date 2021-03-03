@@ -39,6 +39,8 @@ RUN cd /tmp && \
 ENV PATH "/usr/lib/ccache:${PATH}"
 ENV CCACHE_COMPRESS "true"
 ENV GCC_COLORS "error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01"
+# The home dir of the host is not the same as the one of the docker environment
+ENV CCACHE_DIR "/github/workspace/.ccache"
 # Remove the timestamp to improve CCache hit
 ENV KBUILD_BUILD_TIMESTAMP "0"
 

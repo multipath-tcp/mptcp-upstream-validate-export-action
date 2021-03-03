@@ -31,7 +31,7 @@ Default: `5G`.
 ## Example usage
 
 ```yaml
-uses: multipath-tcp/mptcp-upstream-topgit-action@main
+uses: multipath-tcp/mptcp-upstream-topgit-action@v1
 with:
   validate_each_topic: '1'
 ```

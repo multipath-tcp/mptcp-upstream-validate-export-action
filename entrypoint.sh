@@ -498,6 +498,8 @@ tg_for_review() { local tg_conflict_files
 ## Main ##
 ##########
 
+# Display some stats to check everything is OK with ccache
+ccache -s || true
 
 trap 'print_err "${?}"' EXIT
 
@@ -526,3 +528,6 @@ tg_export
 
 ERR_MSG="Unable to update the ${TG_FOR_REVIEW_BRANCH} branch"
 tg_for_review
+
+# Display some stats to check everything is OK with ccache
+ccache -s || true

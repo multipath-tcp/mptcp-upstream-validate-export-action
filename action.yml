@@ -1,22 +1,31 @@
-name: 'MPTCP Upstream TopGit Action'
-description: 'Manage MPTCP TopGit tree: sync with upstream, export'
+name: 'MPTCP Upstream Build Export Action'
+description: 'Build any changes on the "export" branch'
 inputs:
-  force_sync:
-    description: 'Set it to 1 to force a sync even if net-next is already up to date'
+  each_commit:
+    description: 'Set it to true to validate the compilation of each commit'
     required: false
-    default: '0'
-  not_base:
-    description: 'Set it to 1 to force a sync without updating the base from upstream'
-    required: false
-    default: '0'
-  validate_each_topic:
-    description: 'Set it to 1 to validate the compilation of each topic'
-    required: false
-    default: '1'
+    default: 'true'
   ccache_maxsize:
     description: 'Set the maximum size for CCache in {{ github.workspace }}/.ccache dir'
     required: false
     default: '5G'
+  defconfig:
+    description: 'Defconfig to load (x86_64 or i386)'
+    required: false
+    default: 'x86_64'
+  ipv6:
+    description: 'With or without IPv6 kconfig?'
+    required: false
+    default: 'with_ipv6'
+  mptcp:
+    description: 'With or without MPTCP kconfig?'
+    required: false
+    default: 'with_mptcp'
+  base:
+    description: 'Validate each commit from the bottom or from the top'
+    required: false
+    default: 'bottom'
+
 runs:
   using: 'docker'
   image: 'Dockerfile'

@@ -1,40 +1,31 @@
 #! /bin/bash -x
 #
-# The goal is to regularly sync 'net-next' branch on this repo with netdev's one.
-# Then our topgit tree can be updated and the modifications can be pushed only
-# after a successful build and tests. In case of problem, a notification will be
-# sent to Matthieu Baerts.
+# The goal is to validate the 'export' branch of MPTCP Upstream repo. This is
+# done by building and use some static code analysis tools.
+#
+# In case of questions about this script, please notify Matthieu Baerts.
 
 # We should manage all errors in this script
 set -e
 
 # Env vars that can be set to change the behaviour
-UPD_TG_FORCE_SYNC="${INPUT_FORCE_SYNC:-0}"
-UPD_TG_NOT_BASE="${INPUT_NOT_BASE:-0}"
-UPD_TG_VALIDATE_EACH_TOPIC="${INPUT_VALIDATE_EACH_TOPIC:-1}"
+VAL_EXP_EACH_COMMIT="${INPUT_EACH_COMMIT:-true}"
+VAL_EXP_DEFCONFIG="${INPUT_DEFCONFIG:-x86_64}"
+VAL_EXP_IPV6="${INPUT_IPV6:-with_ipv6}"
+VAL_EXP_MPTCP="${INPUT_MPTCP:-with_mptcp}"
+VAL_EXP_BASE="${INPUT_BASE:-bottom}"
 
 export CCACHE_MAXSIZE="${INPUT_CCACHE_MAXSIZE:-5G}"
 
-# Github remote
-GIT_REMOTE_GITHUB_NAME="origin"
-
-# Netdev remote
-GIT_REMOTE_NET_NEXT_URL="git://git.kernel.org/pub/scm/linux/kernel/git/netdev/net-next.git"
-GIT_REMOTE_NET_NEXT_BRANCH="master"
-
-# Local repo
-TG_TOPIC_BASE="net-next"
-TG_TOPIC_TOP="t/upstream"
-TG_TOPICS_SKIP=("t/DO-NOT-MERGE-mptcp-enabled-by-default"
-		"t/mptcp-remove-multi-addresses-and-subflows-in-PM")
-TG_EXPORT_BRANCH="export"
-TG_FOR_REVIEW_BRANCH="for-review"
+# Local vars
+COMMITS_SKIP=()
+COMMIT_ORIG_TOP="DO-NOT-MERGE: mptcp: enabled by default"
+COMMIT_ORIG_BOTTOM="DO-NOT-MERGE: git markup: net-next"
+COMMIT_TOP="" # filled below
+COMMIT_BOTTOM="" # filled below
 
 # Sparse
 SPARSE_URL_BASE="https://mirrors.edge.kernel.org/pub/software/devel/sparse/dist/"
-
-ERR_MSG=""
-TG_PUSH_NEEDED=0
 
 ###########
 ## Utils ##
@@ -45,67 +36,118 @@ err() {
 	echo "ERROR: ${*}" >&2
 }
 
-# $1: last return code
-print_err() { local rc
-	rc="${1}"
+# $1: variable name
+invalid_input() {
+	err "Invalid ${1} value: ${!1}"
+}
 
-	# check return code: if different than 0, we exit with an error: reset
-	if [ "${rc}" -eq 0 ]; then
+ccache_stats() {
+	ccache -s || true
+}
+
+git_get_current_commit_title() {
+	git log -1 --format="format:%s" HEAD
+}
+
+# $1: commit title
+git_get_sha_from_commit_title() {
+	git log -1 --grep "^${1}$" --format="format:%H" HEAD
+}
+
+# [ $1: commit msg, default: current branch ]
+is_commit_top() {
+	[ "${1:-$(git_get_current_commit_title)}" = "${COMMIT_TOP}" ]
+}
+
+# $1: commit title
+is_commit_skipped() { local commit curr
+	curr="${1}"
+
+	# We always want to validate the top commit
+	if is_commit_top "${curr}"; then
+		return 1
+	fi
+
+	# No need to validate the DO-NOT-MERGE commits: either "empty" or just
+	# before the top. We don't want to send them anyway
+	if [[ "${curr}" = "DO-NOT-MERGE: "* ]]; then
 		return 0
 	fi
 
-	# in the notif, only the end is displayed
+	# Skip commits intentionaly introducing errors
+	for commit in "${COMMITS_SKIP[@]}"; do
+		if [ "${commit}" = "${curr}" ]; then
+			return 0
+		fi
+	done
+
+	return 1
+}
+
+git_modified_files() {
+	git diff --name-only "HEAD~..HEAD"
+}
+
+commit_has_modified_selftests_code() {
+	git_modified_files | grep -q "^tools/testing/selftests/net/mptcp/"
+}
+
+commit_has_modified_mptcp_code() {
+	git_modified_files | grep -q "^net/mptcp/"
+}
+
+commit_has_non_mptcp_modified_files() {
+	# shellcheck disable=SC2143 ## We cannot use 'grep -q' with '-v' here
+	[ -n "$(git_modified_files | \
+		grep -Ev "^(net/mptcp/|tools/testing/selftests/net/mptcp/)")" ]
+}
+
+#################
+## Init / trap ##
+#################
+
+# $1: last return code
+trap_exit() { local rc
+	rc="${1}"
+
+	# We no longer need the traces
 	set +x
-	err "${ERR_MSG}"
+
+	# Display some stats to check everything is OK with ccache
+	ccache_stats
+
+	if [ "${rc}" -eq 0 ]; then
+		echo "Script executed with success"
+		return 0
+	fi
+
+	echo -n "Last commit: "
+	git log -1 --oneline --no-decorate || true
+
+	# in the notif, only the end is displayed
+	err "Script ended with an error: ${rc}"
 
 	return "${rc}"
 }
 
-git_init() {
-	git config --global user.name "Jenkins Tessares"
-	git config --global user.email "jenkins@tessares.net"
-}
+prepare() {
+	trap 'trap_exit "${?}"' EXIT
 
-# $1: branch ;  [ $2: remote, default: origin ]
-git_checkout() { local branch remote
-	branch="${1}"
-	remote="${2:-${GIT_REMOTE_GITHUB_NAME}}"
+	# Display some stats to check everything is OK with ccache
+	ccache_stats
 
-	git checkout -f "${branch}" || git checkout -b "${branch}" "${remote}/${branch}"
-}
-
-# [ $1: ref, default: HEAD ]
-git_get_sha() {
-	git rev-parse "${1:-HEAD}"
-}
-
-git_get_current_branch() {
-	git rev-parse --abbrev-ref HEAD
-}
-
-tg_get_first() {
-	tg info --series | head -n1 | awk '{ print $1 }'
-}
-
-# [ $1: branch, default: current branch ]
-is_tg_top() {
-	[ "${1:-$(git_get_current_branch)}" = "${TG_TOPIC_TOP}" ]
-}
-
-# $1: branch
-skipped_tg_topic() { local topic curr
-	curr="${1}"
-
-	for topic in "${TG_TOPICS_SKIP[@]}"; do
-		if [ "${topic}" = "${curr}" ]; then
-			return 0
-		fi
-	done
-	return 1
-}
-
-empty_tg_topic() {
-	[ "$(tg patch | grep -c "diff --git a/")" = "0" ]
+	# from bottom to top of the export branch
+	if [ "${VAL_EXP_BASE}" = "bottom" ]; then
+		COMMIT_TOP="${COMMIT_ORIG_TOP}"
+		COMMIT_BOTTOM="${COMMIT_ORIG_BOTTOM}"
+	# from top to new commit on top of the export branch
+	elif [ "${VAL_EXP_BASE}" = "top" ]; then
+		COMMIT_TOP="$(git_get_current_commit_title)"
+		COMMIT_BOTTOM="${COMMIT_ORIG_TOP}"
+	else
+		invalid_input "VAL_EXP_BASE"
+		return 1
+	fi
 }
 
 
@@ -113,6 +155,8 @@ empty_tg_topic() {
 ## Check tools versions ##
 ##########################
 
+# TODO: if the docker is always rebuilt from scratch before each build, remove
+# this and make sure the docker is downloading the last version
 check_sparse_version() { local last curr
 	# Force a rebuild if a new version is available
 	last=$(curl "${SPARSE_URL_BASE}" 2>/dev/null | \
@@ -131,107 +175,12 @@ check_sparse_version() { local last curr
 }
 
 
-###############
-## TG Update ##
-###############
-
-tg_update_base() { local sha_before_update
-	git_checkout "${TG_TOPIC_BASE}"
-
-	git pull --no-stat --ff-only \
-		"${GIT_REMOTE_GITHUB_NAME}" "${TG_TOPIC_BASE}"
-
-	if [ "${UPD_TG_NOT_BASE}" = 1 ]; then
-		return 0
-	fi
-
-	sha_before_update=$(git_get_sha HEAD)
-
-	# this branch has to be in sync with upstream, no merge
-	git pull --no-stat --ff-only \
-		"${GIT_REMOTE_NET_NEXT_URL}" "${GIT_REMOTE_NET_NEXT_BRANCH}"
-	if [ "${UPD_TG_FORCE_SYNC}" != 1 ] && \
-	   [ "${sha_before_update}" = "$(git_get_sha HEAD)" ]; then
-		echo "Already sync with ${GIT_REMOTE_NET_NEXT_URL} (${sha_before_update})"
-		exit 0
-	fi
-
-	# Push will be done with the 'tg push'
-	# in case of conflicts, the resolver will be able to sync the tree to
-	# the latest valid state, update the base manually then resolve the
-	# conflicts only once
-	TG_PUSH_NEEDED=1
-}
-
-tg_update() { local rc=0
-	tg update || rc="${?}"
-
-	if [ "${rc}" != 0 ]; then
-		# display useful info in the log for the notifications
-		git --no-pager diff || true
-
-		tg update --abort
-	fi
-
-	return "${rc}"
-}
-
-tg_update_tree() {
-	git_checkout "${TG_TOPIC_TOP}"
-
-	git fetch "${GIT_REMOTE_GITHUB_NAME}"
-
-	# force to add TG refs in refs/top-bases/, errit is configured for a
-	# use with these refs and here below, we also use them.
-	git config --local topgit.top-bases refs
-
-	# fetch and update-ref will be done
-	tg remote "${GIT_REMOTE_GITHUB_NAME}" --populate
-
-	# do that twice (if there is no error) just in case the base and the
-	# rest of the tree were not sync. It can happen if the tree has been
-	# updated by someone else and after, the base (only) has been updated.
-	# At the beginning of this script, we force an update of the base.
-	tg_update
-	tg_update
-}
-
-tg_get_all_topics() {
-	git for-each-ref --format="%(refname)" "refs/remotes/${GIT_REMOTE_GITHUB_NAME}/top-bases/" | \
-		sed -e "s#refs/remotes/${GIT_REMOTE_GITHUB_NAME}/top-bases/\\(.*\\)#\\1#g"
-}
-
-tg_reset() { local topic
-	for topic in $(tg_get_all_topics); do
-		git update-ref "refs/top-bases/${topic}" \
-			"refs/remotes/${GIT_REMOTE_GITHUB_NAME}/top-bases/${topic}"
-		git update-ref "refs/heads/${topic}" "refs/remotes/${GIT_REMOTE_GITHUB_NAME}/${topic}"
-	done
-	# the base should be already up to date anyway.
-	git update-ref "refs/heads/${TG_TOPIC_BASE}" "refs/remotes/${GIT_REMOTE_GITHUB_NAME}/${TG_TOPIC_BASE}"
-}
-
-# $1: last return code
-tg_trap_reset() { local rc
-	rc="${1}"
-
-	# print the error message is any.
-	if print_err "${rc}"; then
-		return 0
-	fi
-
-	tg_reset
-
-	return "${rc}"
-}
-
-
-################
-## Validation ##
-################
+############
+## Config ##
+############
 
 # $*: parameters for defconfig
-generate_config_no_mptcp() {
+config_base() {
 	make defconfig "${@}"
 
 	# no need to compile some drivers for our tests
@@ -258,47 +207,30 @@ generate_config_no_mptcp() {
 		--disable NETDEVICES
 }
 
-# $*: parameters for defconfig
-generate_config_mptcp() {
-	generate_config_no_mptcp "${@}"
-
-	# to avoid warnings/errors, enable KUnit without the extras
-	echo | scripts/config -e KUNIT -d KUNIT_ALL_TESTS \
-	                      -d LINEAR_RANGES_TEST -d BITS_TEST
+config_add_mptcp() {
+	# to avoid warnings/errors, enable KUnit without the tests
+	echo | scripts/config -e KUNIT -d KUNIT_ALL_TESTS
 
 	# For INET_MPTCP_DIAG
 	echo | scripts/config -e INET_DIAG \
 	                      -d INET_UDP_DIAG -d INET_RAW_DIAG -d INET_DIAG_DESTROY
 
-	echo | scripts/config -e MPTCP -e IPV6 -e MPTCP_IPV6 -e MPTCP_KUNIT_TESTS
+	make olddefconfig
 
 	# Here, we want to have a failure if some new MPTCP options are
 	# available not to forget to enable them. We then don't want to run
 	# 'make olddefconfig' which will silently disable these new options.
+	echo | scripts/config -e MPTCP -e IPV6 -e MPTCP_IPV6 -e MPTCP_KUNIT_TESTS
 }
 
-generate_config_i386_mptcp() {
-	generate_config_mptcp "KBUILD_DEFCONFIG=i386_defconfig"
-}
-
-# $*: config description
-compile_kernel() {
-	if ! KCFLAGS="-Werror" make -j"$(nproc)" -l"$(nproc)"; then
-		err "Unable to compile ${*}"
-		return 1
-	fi
-}
-
-check_compilation_i386() {
-	generate_config_i386_mptcp
-	compile_kernel "with i386 and CONFIG_MPTCP"
-}
-
-check_compilation_no_ipv6() {
-	generate_config_mptcp
+config_disable_ipv6() {
 	echo | scripts/config -d IPV6 -d MPTCP_IPV6
-	compile_kernel "without IPv6 and with CONFIG_MPTCP"
 }
+
+
+###########
+## Extra ##
+###########
 
 # $1: src file ; $2: warn line
 check_sparse_output() { local src warn unlock_sock_fast
@@ -358,139 +290,133 @@ check_compilation_mptcp_extra_warnings() { local src obj warn
 	done
 }
 
-# $1: branch
-tg_has_non_mptcp_modified_files() {
-	git diff --name-only "refs/top-bases/${1}..refs/heads/${1}" | \
-		grep -qEv "^(\.top(deps|msg)$|net/mptcp/)"
-}
 
-# $1: branch
-check_compilation() { local branch
-	branch="${1}"
+#############
+## Compile ##
+#############
 
-	# no need to compile without MPTCP if we only changed files in net/mptcp
-	if is_tg_top "${branch}" || \
-	   tg_has_non_mptcp_modified_files "${branch}"; then
-		generate_config_no_mptcp
-		if ! compile_kernel "without CONFIG_MPTCP"; then
-			err "Unable to compile without CONFIG_MPTCP"
-			return 1
-		fi
-	fi
-
-	generate_config_mptcp
-	if ! compile_kernel "with CONFIG_MPTCP"; then
-		err "Unable to compile with CONFIG_MPTCP"
+compile_selftests() {
+	if ! KCFLAGS="-Werror" make -C tools/testing/selftests/net/mptcp -j"$(nproc)" -l"$(nproc)"; then
+		err "Unable to compile selftests"
 		return 1
 	fi
+}
 
+compile_kernel() {
+	if ! KCFLAGS="-Werror" make -j"$(nproc)" -l"$(nproc)"; then
+		err "Unable to compile the kernel"
+		return 1
+	fi
+}
+
+check_compilation_selftests() {
+	# no need to compile selftests if we didn't modify them
+	if ! commit_has_modified_selftests_code; then
+		return 0
+	fi
+
+	# make sure headers are installed
+	make -j"$(nproc)" -l"$(nproc)" headers_install
+
+	compile_selftests
+}
+
+check_compilation_mptcp() {
+	# no need to compile with MPTCP if we didn't modify them
+	if ! commit_has_modified_mptcp_code; then
+		return 0
+	fi
+
+	config_add_mptcp
+
+	compile_kernel || return ${?}
+
+	# no need to check files in net/mptcp if they have not been modified
 	if ! check_compilation_mptcp_extra_warnings; then
 		err "Unable to compile mptcp source code with W=1 C=1"
 		return 1
 	fi
 }
 
-validation() { local curr_branch
-	if [ "${UPD_TG_VALIDATE_EACH_TOPIC}" = "1" ]; then
-		git_checkout "$(tg_get_first)"
-
-		while true; do
-			curr_branch="$(git_get_current_branch)"
-
-			if skipped_tg_topic "${curr_branch}"; then
-				echo "We can skip this topic"
-			elif ! is_tg_top "${curr_branch}" && empty_tg_topic; then
-				echo "We can skip empty topic";
-			elif ! check_compilation "${curr_branch}"; then
-				err "Unable to compile topic ${curr_branch}"
-				return 1
-			fi
-
-			# switch to the next topic, if any, and show which one
-			tg next 2>/dev/null || break
-			tg checkout next 2>/dev/null || break
-		done
-
-		if ! is_tg_top "${curr_branch}"; then
-			err "Not at the top after validation: ${curr_branch}"
-			return 1
-		fi
-	else
-		git_checkout "${TG_TOPIC_TOP}"
-		if ! check_compilation "${TG_TOPIC_TOP}"; then
-			err "Unable to compile the new version"
-			return 1
-		fi
-	fi
-
-	if ! check_compilation_no_ipv6; then
-		err "Unable to compile without IPv6"
-		return 1
-	fi
-
-	if ! check_compilation_i386; then
-		err "Unable to compile for i386 arch"
-		return 1
-	fi
-}
-
-
-############
-## TG End ##
-############
-
-tg_push_tree() {
-	if [ "${TG_PUSH_NEEDED}" = "0" ]; then
+check_compilation_non_mptcp() {
+	# no need to compile without MPTCP if we only changed files in net/mptcp
+	if ! commit_has_non_mptcp_modified_files; then
 		return 0
 	fi
 
-	git_checkout "${TG_TOPIC_TOP}"
-
-	tg push -r "${GIT_REMOTE_GITHUB_NAME}"
+	compile_kernel
 }
 
-tg_export() { local current_date tag
-	git_checkout "${TG_TOPIC_TOP}"
 
-	current_date=$(date +%Y%m%dT%H%M%S)
-	tag="${TG_EXPORT_BRANCH}/${current_date}"
+#################
+## Validations ##
+#################
 
-	tg export --linearize --force "${TG_EXPORT_BRANCH}"
-
-	# change the committer for the last commit to let Intel's kbuild starting tests
-	GIT_COMMITTER_NAME="Matthieu Baerts" \
-		GIT_COMMITTER_EMAIL="matthieu.baerts@tessares.net" \
-		git commit --amend --no-edit
-
-	git push --force "${GIT_REMOTE_GITHUB_NAME}" "${TG_EXPORT_BRANCH}"
-
-	# send a tag to Github to keep previous commits: we might have refs to them
-	git tag "${tag}" "${TG_EXPORT_BRANCH}"
-	git push "${GIT_REMOTE_GITHUB_NAME}" "${tag}"
-}
-
-tg_for_review() { local tg_conflict_files
-	git_checkout "${TG_FOR_REVIEW_BRANCH}"
-
-	git pull --no-stat --ff-only \
-		"${GIT_REMOTE_GITHUB_NAME}" "${TG_FOR_REVIEW_BRANCH}"
-
-	if ! git merge --no-edit --signoff "${TG_TOPIC_TOP}"; then
-		# the only possible conflict would be with the topgit files, manage this
-		tg_conflict_files=$(git status --porcelain | grep -E "^DU\\s.top(deps|msg)$")
-		if [ -n "${tg_conflict_files}" ]; then
-			echo "${tg_conflict_files}" | awk '{ print $2 }' | xargs git rm
-			if ! git commit -s --no-edit; then
-				err "Unexpected other conflicts: ${tg_conflict_files}"
-				return 1
-			fi
-		else
-			err "Unexpected conflicts when updating ${TG_FOR_REVIEW_BRANCH}"
-			return 1
-		fi
+validate_one_commit() {
+	if [ "${VAL_EXP_DEFCONFIG}" != "x86_64" ] && \
+	   [ "${VAL_EXP_DEFCONFIG}" != "i386" ]; then
+		invalid_input "VAL_EXP_DEFCONFIG"
+		return 1
 	fi
 
-	git push "${GIT_REMOTE_GITHUB_NAME}" "${TG_FOR_REVIEW_BRANCH}"
+	config_base "KBUILD_DEFCONFIG=${VAL_EXP_DEFCONFIG}_defconfig"
+
+	if [ "${VAL_EXP_IPV6}" = "without_ipv6" ]; then
+		config_disable_ipv6
+	elif [ "${VAL_EXP_IPV6}" != "with_ipv6" ]; then
+		invalid_input "VAL_EXP_IPV6"
+		return 1
+	fi
+
+	if [ "${VAL_EXP_MPTCP}" = "without_mptcp" ]; then
+		check_compilation_non_mptcp
+	elif [ "${VAL_EXP_MPTCP}" = "with_mptcp" ]; then
+		check_compilation_mptcp || return ${?}
+		check_compilation_selftests
+	else
+		invalid_input "VAL_EXP_MPTCP"
+		return 1
+	fi
+}
+
+validate_each_commit() { local sha title sha_base commit
+	sha_base="$(git_get_sha_from_commit_title "${COMMIT_BOTTOM}")"
+
+	if [ -z "${sha_base}" ]; then
+		err "Base commit has not been found (${COMMIT_BOTTOM})"
+		return 1
+	fi
+
+	while read -r sha title; do
+		commit="${sha} ${title}"
+
+		git checkout --detach -f "${sha}"
+
+		echo "Validating ${commit}"
+
+		if is_commit_skipped "${title}"; then
+			echo "We can skip this commit: ${commit}"
+		elif ! validate_one_commit; then
+			err "Unable to validate one commit: ${commit}"
+			return 1
+		fi
+	done <<< "$(git log --reverse --format="%h %s" "${sha_base}..HEAD")"
+
+	if ! is_commit_top; then
+		err "Not at the top after validation: ${commit}"
+		return 1
+	fi
+}
+
+validation() {
+	if [ "${VAL_EXP_EACH_COMMIT}" = "true" ]; then
+		validate_each_commit
+	elif [ "${VAL_EXP_EACH_COMMIT}" = "false" ]; then
+		validate_one_commit
+	else
+		invalid_input "VAL_EXP_EACH_COMMIT"
+		return 1
+	fi
 }
 
 
@@ -498,36 +424,8 @@ tg_for_review() { local tg_conflict_files
 ## Main ##
 ##########
 
-# Display some stats to check everything is OK with ccache
-ccache -s || true
+prepare
 
-trap 'print_err "${?}"' EXIT
-
-ERR_MSG="Environment is not up to date"
 check_sparse_version
 
-ERR_MSG="Unable to init git"
-git_init
-
-ERR_MSG="Unable to update the topgit base"
-tg_update_base
-
-trap 'tg_trap_reset "${?}"' EXIT
-
-ERR_MSG="Unable to update the topgit tree"
-tg_update_tree
-
-ERR_MSG="Unexpected error during the validation phase"
 validation
-
-ERR_MSG="Unable to push the update of the Topgit tree"
-tg_push_tree
-
-ERR_MSG="Unable to export the TopGit tree"
-tg_export
-
-ERR_MSG="Unable to update the ${TG_FOR_REVIEW_BRANCH} branch"
-tg_for_review
-
-# Display some stats to check everything is OK with ccache
-ccache -s || true

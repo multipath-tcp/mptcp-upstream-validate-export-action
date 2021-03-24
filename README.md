@@ -1,37 +1,47 @@
-# MPTCP Upstream TopGit Action
+# MPTCP Upstream Build Export Action
 
-This action is specific to MPTCP Upstream repo to manage the TopGit tree in
-[mptcp_net-next](https://github.com/multipath-tcp/mptcp_net-next) repo.
+This action is specific to MPTCP Upstream repo to validate the `export` branch
+in [mptcp_net-next](https://github.com/multipath-tcp/mptcp_net-next) repo.
 
-The idea here is to periodically sync the tree with upstream (net-next repo),
-validate the updated tree by building the kernel and if everything is OK,
-publish the new tree to the repo.
+The idea here is to validate the updated tree by building the kernel.
 
 ## Inputs
 
-### `force_sync`
+### `each_commit`
 
-Set it to 1 to force a sync even if net-next is already up to date. Default:
-`0`.
-
-### `not_base`
-
-Set it to 1 to force a sync without updating the base from upstream. Default:
-`0`.
-
-### `validate_each_topic`
-
-Set it to 1 to validate the compilation of each topic. Default: `1`.
+Set it to `true` to validate the compilation of each commit. Default: `true`.
 
 ### `ccache_maxsize`
 
 Set the maximum size for CCache in `${{ github.workspace }}/.ccache` dir.
 Default: `5G`.
 
+### `defconfig`
+
+Set the defconfig to pick: `x86_64` or `i386`. Default: `x86_64`.
+
+### `ipv6`
+
+Compile with or without IPv6 support. Default: `with_ipv6`.
+
+### `mptcp`
+
+Compile with or without MPTCP support. Default: `with_mptcp`.
+
+### `base`
+
+Validate each commit of the `export` branch (`bottom`) or only commits on top of
+it (`top`). Default: `bottom`.
+
 ## Example usage
 
 ```yaml
-uses: multipath-tcp/mptcp-upstream-topgit-action@v1
+uses: multipath-tcp/mptcp-upstream-build-export-action@main
 with:
-  validate_each_topic: '1'
+  each_commit: true
+  ccache_maxsize: 5G
+  defconfig: x86_64
+  ipv6: with_ipv6
+  mptcp: with_mptcp
+  base: top
 ```

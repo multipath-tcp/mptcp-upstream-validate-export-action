@@ -179,52 +179,81 @@ check_sparse_version() { local last curr
 ## Config ##
 ############
 
-# $*: parameters for defconfig
 config_base() {
-	make defconfig "${@}"
+	rm -f .config
 
-	# no need to compile some drivers for our tests
-	echo | scripts/config \
-		--disable DRM \
-		--disable PCCARD \
-		--disable ATA \
-		--disable MD \
-		--disable PPS \
-		--disable SOUND \
-		--disable USB \
-		--disable IOMMU_SUPPORT \
-		--disable INPUT_LEDS \
-		--disable AGP \
-		--disable VGA_ARB \
-		--disable EFI \
-		--disable WLAN \
-		--disable WIRELESS \
-		--disable LOGO \
-		--disable NFS_FS \
-		--disable XFRM_USER \
-		--disable INET6_AH \
-		--disable INET6_ESP \
-		--disable NETDEVICES
+	make tinyconfig
+
+	scripts/config -e NET -e INET
 }
 
-config_add_mptcp() {
+config_arch() {
+	if [ "${VAL_EXP_DEFCONFIG}" = "x86_64" ]; then
+		scripts/config -e 64BIT
+	elif [ "${VAL_EXP_DEFCONFIG}" = "i386" ]; then
+		scripts/config -d 64BIT
+	else
+		invalid_input "VAL_EXP_DEFCONFIG"
+		return 1
+	fi
+}
+
+config_ipv6() {
+	if [ "${VAL_EXP_IPV6}" = "with_ipv6" ]; then
+		scripts/config -e IPV6
+	elif [ "${VAL_EXP_IPV6}" = "without_ipv6" ]; then
+		scripts/config -d IPV6
+	else
+		invalid_input "VAL_EXP_IPV6"
+		return 1
+	fi
+}
+
+config_extras() {
 	# to avoid warnings/errors, enable KUnit without the tests
-	echo | scripts/config -e KUNIT -d KUNIT_ALL_TESTS
+	scripts/config -e KUNIT \
+	               -d KUNIT_ALL_TESTS
 
 	# For INET_MPTCP_DIAG
-	echo | scripts/config -e INET_DIAG \
-	                      -d INET_UDP_DIAG -d INET_RAW_DIAG -d INET_DIAG_DESTROY
+	scripts/config -e INET_DIAG \
+	               -d INET_UDP_DIAG -d INET_RAW_DIAG -d INET_DIAG_DESTROY
+
+	# For MPTCP SYN Cookies
+	scripts/config -e SYN_COOKIES
+}
+
+config_mptcp() {
+	if [ "${VAL_EXP_MPTCP}" = "with_mptcp" ]; then
+		scripts/config -e MPTCP -e MPTCP_KUNIT_TESTS
+	elif [ "${VAL_EXP_MPTCP}" = "without_mptcp" ]; then
+		scripts/config -d MPTCP -d MPTCP_KUNIT_TESTS
+	else
+		invalid_input "VAL_EXP_MPTCP"
+		return 1
+	fi
+
+	if [ "${VAL_EXP_IPV6}" = "with_ipv6" ]; then
+		scripts/config -e MPTCP_IPV6
+	elif [ "${VAL_EXP_IPV6}" = "without_ipv6" ]; then
+		scripts/config -d MPTCP_IPV6
+	else
+		invalid_input "VAL_EXP_IPV6"
+		return 1
+	fi
+}
+
+config() {
+	config_base
+	config_arch
+	config_ipv6
+	config_extras
 
 	make olddefconfig
 
 	# Here, we want to have a failure if some new MPTCP options are
 	# available not to forget to enable them. We then don't want to run
 	# 'make olddefconfig' which will silently disable these new options.
-	echo | scripts/config -e MPTCP -e IPV6 -e MPTCP_IPV6 -e MPTCP_KUNIT_TESTS
-}
-
-config_disable_ipv6() {
-	echo | scripts/config -d IPV6 -d MPTCP_IPV6
+	config_mptcp
 }
 
 
@@ -327,8 +356,6 @@ check_compilation_mptcp() {
 		return 0
 	fi
 
-	config_add_mptcp
-
 	compile_kernel || return ${?}
 
 	# no need to check files in net/mptcp if they have not been modified
@@ -353,21 +380,6 @@ check_compilation_non_mptcp() {
 #################
 
 validate_one_commit() {
-	if [ "${VAL_EXP_DEFCONFIG}" != "x86_64" ] && \
-	   [ "${VAL_EXP_DEFCONFIG}" != "i386" ]; then
-		invalid_input "VAL_EXP_DEFCONFIG"
-		return 1
-	fi
-
-	config_base "KBUILD_DEFCONFIG=${VAL_EXP_DEFCONFIG}_defconfig"
-
-	if [ "${VAL_EXP_IPV6}" = "without_ipv6" ]; then
-		config_disable_ipv6
-	elif [ "${VAL_EXP_IPV6}" != "with_ipv6" ]; then
-		invalid_input "VAL_EXP_IPV6"
-		return 1
-	fi
-
 	if [ "${VAL_EXP_MPTCP}" = "without_mptcp" ]; then
 		check_compilation_non_mptcp
 	elif [ "${VAL_EXP_MPTCP}" = "with_mptcp" ]; then
@@ -427,5 +439,7 @@ validation() {
 prepare
 
 check_sparse_version
+
+config
 
 validation

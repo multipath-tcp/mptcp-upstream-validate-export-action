@@ -28,11 +28,6 @@ Compile with or without IPv6 support. Default: `with_ipv6`.
 
 Compile with or without MPTCP support. Default: `with_mptcp`.
 
-### `base`
-
-Validate each commit of the `export` branch (`bottom`) or only commits on top of
-it (`top`). Default: `bottom`.
-
 ## Example usage
 
 ```yaml
@@ -43,5 +38,4 @@ with:
   defconfig: x86_64
   ipv6: with_ipv6
   mptcp: with_mptcp
-  base: top
 ```

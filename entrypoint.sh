@@ -13,7 +13,6 @@ VAL_EXP_EACH_COMMIT="${INPUT_EACH_COMMIT:-true}"
 VAL_EXP_DEFCONFIG="${INPUT_DEFCONFIG:-x86_64}"
 VAL_EXP_IPV6="${INPUT_IPV6:-with_ipv6}"
 VAL_EXP_MPTCP="${INPUT_MPTCP:-with_mptcp}"
-VAL_EXP_BASE="${INPUT_BASE:-bottom}"
 
 export CCACHE_MAXSIZE="${INPUT_CCACHE_MAXSIZE:-5G}"
 
@@ -63,7 +62,7 @@ is_commit_top() {
 is_commit_skipped() { local commit curr
 	curr="${1}"
 
-	# We always want to validate the top commit
+	# We always want to validate the top commit even if it is a DO-NOT-MERGE
 	if is_commit_top "${curr}"; then
 		return 1
 	fi
@@ -136,17 +135,13 @@ prepare() {
 	# Display some stats to check everything is OK with ccache
 	ccache_stats
 
-	# from bottom to top of the export branch
-	if [ "${VAL_EXP_BASE}" = "bottom" ]; then
-		COMMIT_TOP="${COMMIT_ORIG_TOP}"
+	COMMIT_TOP="$(git_get_current_commit_title)"
+
+	# Validate the whole export branch if we are at the top
+	if [ "${COMMIT_TOP}" = "${COMMIT_ORIG_TOP}" ]; then
 		COMMIT_BOTTOM="${COMMIT_ORIG_BOTTOM}"
-	# from top to new commit on top of the export branch
-	elif [ "${VAL_EXP_BASE}" = "top" ]; then
-		COMMIT_TOP="$(git_get_current_commit_title)"
+	else # validate only commits on top of the export branch
 		COMMIT_BOTTOM="${COMMIT_ORIG_TOP}"
-	else
-		invalid_input "VAL_EXP_BASE"
-		return 1
 	fi
 }
 

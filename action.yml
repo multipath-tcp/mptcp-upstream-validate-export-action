@@ -21,10 +21,6 @@ inputs:
     description: 'With or without MPTCP kconfig?'
     required: false
     default: 'with_mptcp'
-  base:
-    description: 'Validate each commit from the bottom or from the top'
-    required: false
-    default: 'bottom'
 
 runs:
   using: 'docker'

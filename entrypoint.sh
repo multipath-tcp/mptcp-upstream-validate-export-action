@@ -101,6 +101,10 @@ commit_has_non_mptcp_modified_files() {
 		grep -Ev "^(net/mptcp/|tools/testing/selftests/net/mptcp/)")" ]
 }
 
+each_commit() {
+	[ "${VAL_EXP_EACH_COMMIT}" = "true" ]
+}
+
 #################
 ## Init / trap ##
 #################
@@ -335,7 +339,7 @@ compile_kernel() {
 
 check_compilation_selftests() {
 	# no need to compile selftests if we didn't modify them
-	if ! commit_has_modified_selftests_code; then
+	if each_commit && ! commit_has_modified_selftests_code; then
 		return 0
 	fi
 
@@ -347,7 +351,7 @@ check_compilation_selftests() {
 
 check_compilation_mptcp() {
 	# no need to compile with MPTCP if we didn't modify them
-	if ! commit_has_modified_mptcp_code; then
+	if each_commit && ! commit_has_modified_mptcp_code; then
 		return 0
 	fi
 
@@ -362,7 +366,7 @@ check_compilation_mptcp() {
 
 check_compilation_non_mptcp() {
 	# no need to compile without MPTCP if we only changed files in net/mptcp
-	if ! commit_has_non_mptcp_modified_files; then
+	if each_commit && ! commit_has_non_mptcp_modified_files; then
 		return 0
 	fi
 

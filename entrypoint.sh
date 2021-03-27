@@ -340,7 +340,7 @@ check_compilation_selftests() {
 	fi
 
 	# make sure headers are installed
-	make -j"$(nproc)" -l"$(nproc)" headers_install
+	make -j"$(nproc)" -l"$(nproc)" headers_install || return ${?}
 
 	compile_selftests
 }

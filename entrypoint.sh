@@ -390,12 +390,32 @@ validate_one_commit() {
 	fi
 }
 
+validate_one_commit_exception() { local rc=0
+	echo "Ignoring the error, only validating the last commit"
+
+	validate_one_commit || rc=$?
+
+	echo "WARNING: only one commit was validated"
+
+	return ${rc}
+}
+
+err_no_base_commit() {
+	err "Base commit has not been found (${COMMIT_BOTTOM})"
+
+	if [ "${GITHUB_REPOSITORY_OWNER}" = "multipath-tcp" ]; then
+		return 1
+	fi
+
+	validate_one_commit_exception
+}
+
 validate_each_commit() { local sha title sha_base commit
 	sha_base="$(git_get_sha_from_commit_title "${COMMIT_BOTTOM}")"
 
 	if [ -z "${sha_base}" ]; then
-		err "Base commit has not been found (${COMMIT_BOTTOM})"
-		return 1
+		err_no_base_commit
+		return
 	fi
 
 	while read -r sha title; do

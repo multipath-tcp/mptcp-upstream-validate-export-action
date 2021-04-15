@@ -333,6 +333,11 @@ compile_selftests() {
 }
 
 compile_kernel() {
+	# This is needed because we might change KConfig file in the tree: the
+	# first commit(s) could support some settings, they will then be removed
+	# from the .config file and not be available later when added/modified.
+	config_mptcp
+
 	if ! KCFLAGS="-Werror" make -j"$(nproc)" -l"$(nproc)"; then
 		err "Unable to compile the kernel"
 		return 1

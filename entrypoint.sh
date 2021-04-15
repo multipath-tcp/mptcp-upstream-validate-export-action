@@ -222,10 +222,12 @@ config_extras() {
 }
 
 config_mptcp() {
+	# MPTCP_KUNIT_TESTS has been renamed between 5.12 and 5.13
+	# As long as this modification is in our tree, we need to keep both
 	if [ "${VAL_EXP_MPTCP}" = "with_mptcp" ]; then
-		scripts/config -e MPTCP -e MPTCP_KUNIT_TESTS
+		scripts/config -e MPTCP -e MPTCP_KUNIT_TESTS -e MPTCP_KUNIT_TEST
 	elif [ "${VAL_EXP_MPTCP}" = "without_mptcp" ]; then
-		scripts/config -d MPTCP -d MPTCP_KUNIT_TESTS
+		scripts/config -d MPTCP -d MPTCP_KUNIT_TESTS -d MPTCP_KUNIT_TEST
 	else
 		invalid_input "VAL_EXP_MPTCP"
 		return 1

@@ -219,6 +219,9 @@ config_extras() {
 
 	# For MPTCP SYN Cookies
 	scripts/config -e SYN_COOKIES
+
+	# For TRACE_EVENT
+	scripts/config -e TRACEPOINTS_ENABLED
 }
 
 config_mptcp() {

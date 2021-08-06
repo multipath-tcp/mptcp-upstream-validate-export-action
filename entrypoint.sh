@@ -299,6 +299,13 @@ check_sparse_output() { local src warn unlock_sock_fast
 				return 0
 			fi
 		;;
+		"net/mptcp/pm_netlink.c")
+			# net/mptcp/pm_netlink.c:507:25: warning: context imbalance in 'mptcp_pm_create_subflow_or_signal_addr' - unexpected unlock
+			if [ "$(echo "${warn}" | grep -cE "net/mptcp/pm_netlink.c:[0-9]+:[0-9]+: warning: context imbalance in 'mptcp_pm_create_subflow_or_signal_addr' - unexpected unlock")" -eq 1 ]; then
+				echo "Ignore the following warning because sparse seems fooled with the for-loop inside the unlocked part: ${warn}"
+				return 0
+			fi
+		;;
 	esac
 
 	echo "Non whitelisted warning: ${warn}"

@@ -222,6 +222,10 @@ config_extras() {
 
 	# For TRACE_EVENT
 	scripts/config -e TRACEPOINTS_ENABLED
+
+	# Compile test headers exported to user-space to ensure they are
+	# self-contained, i.e. compilable as standalone units.
+	scripts/config -e UAPI_HEADER_TEST
 }
 
 config_mptcp() {

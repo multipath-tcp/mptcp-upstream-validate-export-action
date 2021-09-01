@@ -225,7 +225,7 @@ config_extras() {
 
 	# Compile test headers exported to user-space to ensure they are
 	# self-contained, i.e. compilable as standalone units.
-	scripts/config -e UAPI_HEADER_TEST
+	scripts/config -e HEADERS_INSTALL -e UAPI_HEADER_TEST
 }
 
 config_mptcp() {

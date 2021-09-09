@@ -286,7 +286,7 @@ check_sparse_output() { local src warn unlock_sock_fast
 
 	case "${src}" in
 		"net/mptcp/protocol.c")
-			# net/mptcp/protocol.c:1535:24: warning: context imbalance in 'mptcp_sk_clone' - unexpected unlock
+			# net/mptcp/protocol.c:2892:24: warning: context imbalance in 'mptcp_sk_clone' - unexpected unlock
 			if [ "$(echo "${warn}" | grep -cE "net/mptcp/protocol.c:[0-9]+:[0-9]+: warning: context imbalance in 'mptcp_sk_clone' - unexpected unlock")" -eq 1 ]; then
 				echo "Ignore the following warning because sk_clone_lock() conditionally acquires the socket lock, (if return value != 0), so we can't annotate the caller as 'release': ${warn}"
 				return 0
@@ -294,9 +294,9 @@ check_sparse_output() { local src warn unlock_sock_fast
 		;;
 		"net/mptcp/pm_netlink.c")
 			# net/mptcp/pm_netlink.c:507:25: warning: context imbalance in 'mptcp_pm_create_subflow_or_signal_addr' - unexpected unlock
-			# include/linux/spinlock.h:399:9: warning: context imbalance in 'mptcp_pm_nl_add_addr_received' - unexpected unlock
+			# net/mptcp/pm_netlink.c:622:23: warning: context imbalance in 'mptcp_pm_nl_add_addr_received' - unexpected unlock
 			if [ "$(echo "${warn}" | grep -cE "net/mptcp/pm_netlink.c:[0-9]+:[0-9]+: warning: context imbalance in 'mptcp_pm_create_subflow_or_signal_addr' - unexpected unlock")" -eq 1 ] || \
-			   [ "$(echo "${warn}" | grep -cE "include/linux/spinlock.h:[0-9]+:[0-9]+: warning: context imbalance in 'mptcp_pm_nl_add_addr_received' - unexpected unlock")" -eq 1 ]; then
+			   [ "$(echo "${warn}" | grep -cE "net/mptcp/pm_netlink.c:[0-9]+:[0-9]+: warning: context imbalance in 'mptcp_pm_nl_add_addr_received' - unexpected unlock")" -eq 1 ]; then
 				echo "Ignore the following warning because sparse seems fooled with the for-loop inside the unlocked part: ${warn}"
 				return 0
 			fi

@@ -284,17 +284,6 @@ check_sparse_output() { local src warn unlock_sock_fast
 		return 0
 	fi
 
-	for unlock_sock_fast in $(git grep -p unlock_sock_fast -- "${src}" | \
-					grep "${src}=" | \
-					sed "s/.*\b\(\S\+\)(.*/\1/g"); do
-		# ./include/net/sock.h:1608:31: warning: context imbalance in 'mptcp_close' - unexpected unlock
-		if [ "$(echo "${warn}" | \
-			grep -cE "./include/net/sock.h:[0-9]+:[0-9]+: warning: context imbalance in '${unlock_sock_fast}' - unexpected unlock")" -eq 1 ]; then
-			echo "Ignore the following warning because unlock_sock_fast() conditionally releases the socket lock: '${warn}'"
-			return 0
-		fi
-	done
-
 	case "${src}" in
 		"net/mptcp/protocol.c")
 			# net/mptcp/protocol.c:1535:24: warning: context imbalance in 'mptcp_sk_clone' - unexpected unlock

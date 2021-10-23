@@ -28,6 +28,10 @@ Compile with or without IPv6 support. Default: `with_ipv6`.
 
 Compile with or without MPTCP support. Default: `with_mptcp`.
 
+### `checkpatch`
+
+Set it to `true` to run checkpatch exclusively. Default: `false`.
+
 ## Example usage
 
 ```yaml
@@ -38,4 +42,5 @@ with:
   defconfig: x86_64
   ipv6: with_ipv6
   mptcp: with_mptcp
+  checkpatch: false
 ```

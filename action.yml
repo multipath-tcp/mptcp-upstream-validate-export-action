@@ -21,6 +21,10 @@ inputs:
     description: 'With or without MPTCP kconfig?'
     required: false
     default: 'with_mptcp'
+  checkpatch:
+    description: 'Set it to true to validate checkpatch exclusively'
+    required: false
+    default: 'false'
 
 runs:
   using: 'docker'

@@ -13,6 +13,7 @@ VAL_EXP_EACH_COMMIT="${INPUT_EACH_COMMIT:-true}"
 VAL_EXP_DEFCONFIG="${INPUT_DEFCONFIG:-x86_64}"
 VAL_EXP_IPV6="${INPUT_IPV6:-with_ipv6}"
 VAL_EXP_MPTCP="${INPUT_MPTCP:-with_mptcp}"
+VAL_EXP_CHECKPATCH="${INPUT_CHECKPATCH:-false}"
 
 export CCACHE_MAXSIZE="${INPUT_CCACHE_MAXSIZE:-5G}"
 
@@ -22,6 +23,7 @@ COMMIT_ORIG_TOP="DO-NOT-MERGE: mptcp: enabled by default"
 COMMIT_ORIG_BOTTOM="DO-NOT-MERGE: git markup: net-next"
 COMMIT_TOP="" # filled below
 COMMIT_BOTTOM="" # filled below
+TMPFILE="" # filled below
 
 # Sparse
 SPARSE_URL_BASE="https://mirrors.edge.kernel.org/pub/software/devel/sparse/dist/"
@@ -56,6 +58,10 @@ git_get_sha_from_commit_title() {
 # [ $1: commit msg, default: current branch ]
 is_commit_top() {
 	[ "${1:-$(git_get_current_commit_title)}" = "${COMMIT_TOP}" ]
+}
+
+needs_checkpatch() {
+	[ "${VAL_EXP_CHECKPATCH}" = "true" ]
 }
 
 # $1: commit title
@@ -116,6 +122,8 @@ trap_exit() { local rc
 	# We no longer need the traces
 	set +x
 
+	rm -f "${TMPFILE}"
+
 	# Display some stats to check everything is OK with ccache
 	ccache_stats
 
@@ -139,6 +147,8 @@ prepare() {
 	# Display some stats to check everything is OK with ccache
 	ccache_stats
 
+	TMPFILE=$(mktemp)
+
 	COMMIT_TOP="$(git_get_current_commit_title)"
 
 	# Validate the whole export branch if we are at the top
@@ -156,7 +166,7 @@ prepare() {
 
 needs_sparse() {
 	# we only need sparse for MPTCP code
-	[ "${VAL_EXP_MPTCP}" = "with_mptcp" ]
+	! needs_checkpatch && [ "${VAL_EXP_MPTCP}" = "with_mptcp" ]
 
 }
 
@@ -260,7 +270,16 @@ config_mptcp() {
 	fi
 }
 
+needs_config() {
+	# we don't need the kconfig for checkpatch
+	! needs_checkpatch
+}
+
 config() {
+	if needs_config; then
+		return 0
+	fi
+
 	config_base
 	config_arch
 	config_ipv6
@@ -396,12 +415,64 @@ check_compilation_non_mptcp() {
 }
 
 
+################
+## Checkpatch ##
+################
+
+_get_mid() { local mid
+	mid=$(git log -1 --format="format:%b" | \
+		grep "^Message-Id: " | \
+		tail -n1 | \
+		awk '{print $2}')
+
+	if [ -n "${mid}" ]; then
+		echo "${mid:1:-1}"
+	else
+		git rev-parse --short HEAD
+	fi
+}
+
+_checkpatch() {
+	./scripts/checkpatch.pl \
+		--strict \
+		--color=always \
+		--codespell --codespellfile /usr/lib/python3/dist-packages/codespell_lib/data/dictionary.txt \
+		-g HEAD 2>&1 | tee "${TMPFILE}" >&2
+
+	grep "^total:" "${TMPFILE}" | tail -n1
+}
+
+# $1: summary
+_get_pw_status() {
+	case "${1}" in
+		'total: 0 errors, 0 warnings, 0 checks'*)
+			echo "success"
+		;;
+		'total: 0 errors, '*)
+			echo "warning"
+		;;
+		*)
+			echo "fail"
+		;;
+	esac
+}
+
+checkpatch() { local mid sum status
+	mid=$(_get_mid)
+	sum=$(_checkpatch)
+	status=$(_get_pw_status "${sum}")
+
+	echo "${mid} ${status} ${sum}" | tee -a "./checkpatch-results.txt"
+}
+
 #################
 ## Validations ##
 #################
 
 validate_one_commit() {
-	if [ "${VAL_EXP_MPTCP}" = "without_mptcp" ]; then
+	if needs_checkpatch; then
+		checkpatch
+	elif [ "${VAL_EXP_MPTCP}" = "without_mptcp" ]; then
 		check_compilation_non_mptcp
 	elif [ "${VAL_EXP_MPTCP}" = "with_mptcp" ]; then
 		check_compilation_mptcp || return ${?}

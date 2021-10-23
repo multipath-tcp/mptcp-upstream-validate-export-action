@@ -3,7 +3,8 @@ FROM ubuntu:20.04
 # dependencies for the script
 RUN apt-get update && \
     apt-get install -y build-essential libncurses5-dev gcc libssl-dev bc bison \
-                       libelf-dev flex git curl tar hashalot ccache rsync && \
+                       libelf-dev flex git curl tar hashalot ccache rsync \
+                       python3-ply python3-git codespell && \
     apt-get clean
 
 # Sparse

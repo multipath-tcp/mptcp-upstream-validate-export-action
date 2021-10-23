@@ -280,7 +280,7 @@ config() {
 ###########
 
 # $1: src file ; $2: warn line
-check_sparse_output() { local src warn unlock_sock_fast
+check_sparse_output() { local src warn
 	src="${1}"
 	warn="${2}"
 

@@ -154,9 +154,18 @@ prepare() {
 ## Check tools versions ##
 ##########################
 
-# TODO: if the docker is always rebuilt from scratch before each build, remove
-# this and make sure the docker is downloading the last version
+needs_sparse() {
+	# we only need sparse for MPTCP code
+	[ "${VAL_EXP_MPTCP}" = "with_mptcp" ]
+
+}
+
 check_sparse_version() { local last curr
+	# we only need sparse for MPTCP code
+	if ! needs_sparse; then
+		return 0
+	fi
+
 	# Force a rebuild if a new version is available
 	last=$(curl "${SPARSE_URL_BASE}" 2>/dev/null | \
 		grep -o 'sparse-[0-9]\+\.[0-9]\+\.[0-9]\+\.tar' | \
@@ -168,7 +177,8 @@ check_sparse_version() { local last curr
 	if [ "${curr}" = "${last}" ]; then
 		echo "Using the last version of Sparse: ${curr}"
 	else
-		err "Not the last version of Sparse: ${curr} < ${last}"
+		err "Not the last version of Sparse: ${curr} < ${last}." \
+		    "Please update the Dockerfile of this action"
 		return 1
 	fi
 }

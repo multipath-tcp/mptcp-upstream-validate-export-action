@@ -348,7 +348,7 @@ check_sparse_output() { local src warn
 	return 1
 }
 
-check_compilation_mptcp_extra_warnings() { local src obj warn
+check_compilation_mptcp_extra_warnings() { local src obj warn rc=0
 	for src in net/mptcp/*.c; do
 		obj="${src/%.c/.o}"
 		if [[ "${src}" = *"_test.mod.c" ]]; then
@@ -356,14 +356,20 @@ check_compilation_mptcp_extra_warnings() { local src obj warn
 		fi
 
 		touch "${src}"
-		KCFLAGS="-Werror" make W=1 "${obj}" || return 1
+		if ! KCFLAGS="-Werror" make W=1 "${obj}"; then
+			rc=1
+		fi
 
 		touch "${src}"
 		# RC is not >0 if warn but warn are lines not starting with spaces
 		while read -r warn; do
-			check_sparse_output "${src}" "${warn}" || return 1
+			if ! check_sparse_output "${src}" "${warn}"; then
+				rc=1
+			fi
 		done <<< "$(make C=1 "${obj}" 2>&1 >/dev/null | grep "^\S")"
 	done
+
+	return "${rc}"
 }
 
 

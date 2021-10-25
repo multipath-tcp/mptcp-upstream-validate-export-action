@@ -113,6 +113,24 @@ each_commit() {
 	[ "${VAL_EXP_EACH_COMMIT}" = "true" ]
 }
 
+get_mid() { local mid
+	mid=$(git log -1 --format="format:%b" | \
+		grep "^Message-Id: " | \
+		tail -n1 | \
+		awk '{print $2}')
+
+	if [ -n "${mid}" ]; then
+		echo "${mid:1:-1}"
+	else
+		git rev-parse --short HEAD
+	fi
+}
+
+# $1: status ; $2: description ; $3: category
+write_results() {
+	echo "$(get_mid) ${1} ${2}" | tee -a "./${3}-results.txt"
+}
+
 #################
 ## Init / trap ##
 #################
@@ -439,19 +457,6 @@ check_compilation_non_mptcp() {
 ## Checkpatch ##
 ################
 
-_get_mid() { local mid
-	mid=$(git log -1 --format="format:%b" | \
-		grep "^Message-Id: " | \
-		tail -n1 | \
-		awk '{print $2}')
-
-	if [ -n "${mid}" ]; then
-		echo "${mid:1:-1}"
-	else
-		git rev-parse --short HEAD
-	fi
-}
-
 _checkpatch() {
 	./scripts/checkpatch.pl \
 		--strict \
@@ -463,7 +468,7 @@ _checkpatch() {
 }
 
 # $1: summary
-_get_pw_status() {
+get_cp_status() {
 	case "${1}" in
 		'total: 0 errors, 0 warnings, 0 checks'*)
 			echo "success"
@@ -478,11 +483,10 @@ _get_pw_status() {
 }
 
 checkpatch() { local mid sum status
-	mid=$(_get_mid)
 	sum=$(_checkpatch)
-	status=$(_get_pw_status "${sum}")
+	status=$(get_cp_status "${sum}")
 
-	echo "${mid} ${status} ${sum}" | tee -a "./checkpatch-results.txt"
+	write_results "${status}" "${sum}" "checkpatch"
 }
 
 #################

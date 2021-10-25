@@ -328,6 +328,13 @@ config() {
 ## Extra ##
 ###########
 
+# $1: status ; $2: description
+write_build_results() {
+	# we need to support the "matrix" mode
+	write_results "${1}" "${2}" \
+		"build-${VAL_EXP_DEFCONFIG}-${VAL_EXP_IPV6}-${VAL_EXP_MPTCP}"
+}
+
 # $1: src file ; $2: warn line
 check_sparse_output() { local src warn
 	src="${1}"
@@ -376,6 +383,7 @@ check_compilation_mptcp_extra_warnings() { local src obj warn rc=0
 		touch "${src}"
 		if ! KCFLAGS="-Werror" make W=1 "${obj}"; then
 			err "Unable to compile mptcp source code with make W=1 ${obj}"
+			write_build_results "warning" "Build error with: make W=1 ${obj}"
 			rc=1
 		fi
 
@@ -384,6 +392,7 @@ check_compilation_mptcp_extra_warnings() { local src obj warn rc=0
 		while read -r warn; do
 			if ! check_sparse_output "${src}" "${warn}"; then
 				err "Unable to compile mptcp source code with make C=1 ${obj}: ${warn}"
+				write_build_results "warning" "Build error with: make C=1 ${obj}"
 				rc=1
 			fi
 		done <<< "$(make C=1 "${obj}" 2>&1 >/dev/null | grep "^\S")"
@@ -400,6 +409,7 @@ check_compilation_mptcp_extra_warnings() { local src obj warn rc=0
 compile_selftests() {
 	if ! KCFLAGS="-Werror" make -C tools/testing/selftests/net/mptcp -j"$(nproc)" -l"$(nproc)"; then
 		err "Unable to compile selftests"
+		write_build_results "fail" "Build error with: make -C tools/testing/selftests/net/mptcp"
 		return 1
 	fi
 }
@@ -412,6 +422,7 @@ compile_kernel() {
 
 	if ! KCFLAGS="-Werror" make -j"$(nproc)" -l"$(nproc)"; then
 		err "Unable to compile the kernel"
+		write_build_results "fail" "Build error with: -Werror"
 		return 1
 	fi
 }
@@ -425,6 +436,7 @@ check_compilation_selftests() {
 	# make sure headers are installed
 	if ! make -j"$(nproc)" -l"$(nproc)" headers_install; then
 		err "Unable to build and install the headers"
+		write_build_results "fail" "Build error with: make headers_install"
 		return 1
 	fi
 
@@ -450,6 +462,18 @@ check_compilation_non_mptcp() {
 	fi
 
 	compile_kernel
+}
+
+check_compilation() {
+	if [ "${VAL_EXP_MPTCP}" = "without_mptcp" ]; then
+		check_compilation_non_mptcp
+	elif [ "${VAL_EXP_MPTCP}" = "with_mptcp" ]; then
+		check_compilation_mptcp || return ${?}
+		check_compilation_selftests
+	else
+		invalid_input "VAL_EXP_MPTCP"
+		return 1
+	fi
 }
 
 
@@ -496,13 +520,9 @@ checkpatch() { local mid sum status
 validate_one_commit() {
 	if needs_checkpatch; then
 		checkpatch
-	elif [ "${VAL_EXP_MPTCP}" = "without_mptcp" ]; then
-		check_compilation_non_mptcp
-	elif [ "${VAL_EXP_MPTCP}" = "with_mptcp" ]; then
-		check_compilation_mptcp || return ${?}
-		check_compilation_selftests
+	elif check_compilation; then
+		write_build_results "success" "Build and static analysis OK"
 	else
-		invalid_input "VAL_EXP_MPTCP"
 		return 1
 	fi
 }

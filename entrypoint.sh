@@ -276,7 +276,7 @@ needs_config() {
 }
 
 config() {
-	if needs_config; then
+	if ! needs_config; then
 		return 0
 	fi
 

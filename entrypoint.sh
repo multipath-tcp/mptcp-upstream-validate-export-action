@@ -357,6 +357,7 @@ check_compilation_mptcp_extra_warnings() { local src obj warn rc=0
 
 		touch "${src}"
 		if ! KCFLAGS="-Werror" make W=1 "${obj}"; then
+			err "Unable to compile mptcp source code with make W=1 ${obj}"
 			rc=1
 		fi
 
@@ -364,6 +365,7 @@ check_compilation_mptcp_extra_warnings() { local src obj warn rc=0
 		# RC is not >0 if warn but warn are lines not starting with spaces
 		while read -r warn; do
 			if ! check_sparse_output "${src}" "${warn}"; then
+				err "Unable to compile mptcp source code with make C=1 ${obj}: ${warn}"
 				rc=1
 			fi
 		done <<< "$(make C=1 "${obj}" 2>&1 >/dev/null | grep "^\S")"
@@ -403,7 +405,10 @@ check_compilation_selftests() {
 	fi
 
 	# make sure headers are installed
-	make -j"$(nproc)" -l"$(nproc)" headers_install || return ${?}
+	if ! make -j"$(nproc)" -l"$(nproc)" headers_install; then
+		err "Unable to build and install the headers"
+		return 1
+	fi
 
 	compile_selftests
 }
@@ -417,10 +422,7 @@ check_compilation_mptcp() {
 	compile_kernel || return ${?}
 
 	# no need to check files in net/mptcp if they have not been modified
-	if ! check_compilation_mptcp_extra_warnings; then
-		err "Unable to compile mptcp source code with W=1 C=1"
-		return 1
-	fi
+	check_compilation_mptcp_extra_warnings
 }
 
 check_compilation_non_mptcp() {

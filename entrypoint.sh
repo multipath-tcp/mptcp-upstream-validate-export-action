@@ -18,6 +18,7 @@ VAL_EXP_CHECKPATCH="${INPUT_CHECKPATCH:-false}"
 export CCACHE_MAXSIZE="${INPUT_CCACHE_MAXSIZE:-5G}"
 
 # Local vars
+ERR=()
 COMMITS_SKIP=()
 COMMIT_ORIG_TOP="DO-NOT-MERGE: mptcp: enabled by default"
 COMMIT_ORIG_BOTTOM="DO-NOT-MERGE: git markup: net-next"
@@ -34,6 +35,7 @@ SPARSE_URL_BASE="https://mirrors.edge.kernel.org/pub/software/devel/sparse/dist/
 
 # $@: message to display before quiting
 err() {
+	ERR+=("${*}")
 	echo "ERROR: ${*}" >&2
 }
 
@@ -116,7 +118,7 @@ each_commit() {
 #################
 
 # $1: last return code
-trap_exit() { local rc
+trap_exit() { local rc error
 	rc="${1}"
 
 	# We no longer need the traces
@@ -128,12 +130,22 @@ trap_exit() { local rc
 	ccache_stats
 
 	if [ "${rc}" -eq 0 ]; then
+		if [ ${#ERR[@]} -ne 0 ]; then
+			echo "Unexpected errors found: ${ERR[*]}"
+			return 1
+		fi
+
 		echo "Script executed with success"
 		return 0
 	fi
 
 	echo -n "Last commit: "
 	git log -1 --oneline --no-decorate || true
+
+	echo "Summary of errors:"
+	for error in "${ERR[@]}"; do
+		echo "${error}"
+	done
 
 	# in the notif, only the end is displayed
 	err "Script ended with an error: ${rc}"

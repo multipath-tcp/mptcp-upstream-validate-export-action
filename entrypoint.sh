@@ -515,7 +515,7 @@ err_no_base_commit() {
 	validate_one_commit_exception
 }
 
-validate_each_commit() { local sha title sha_base commit
+validate_each_commit() { local sha_base sha title commit rc=0
 	sha_base="$(git_get_sha_from_commit_title "${COMMIT_BOTTOM}")"
 
 	if [ -z "${sha_base}" ]; then
@@ -534,7 +534,7 @@ validate_each_commit() { local sha title sha_base commit
 			echo "We can skip this commit: ${commit}"
 		elif ! validate_one_commit; then
 			err "Unable to validate one commit: ${commit}"
-			return 1
+			rc=1
 		fi
 	done <<< "$(git log --reverse --format="%h %s" "${sha_base}..HEAD")"
 
@@ -542,6 +542,8 @@ validate_each_commit() { local sha title sha_base commit
 		err "Not at the top after validation: ${commit}"
 		return 1
 	fi
+
+	return "${rc}"
 }
 
 validation() {

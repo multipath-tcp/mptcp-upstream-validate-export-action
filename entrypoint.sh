@@ -33,10 +33,31 @@ SPARSE_URL_BASE="https://mirrors.edge.kernel.org/pub/software/devel/sparse/dist/
 ## Utils ##
 ###########
 
+COLOR_RED="\E[1;31m"
+COLOR_GREEN="\E[1;32m"
+COLOR_BLUE="\E[1;34m"
+COLOR_RESET="\E[0m"
+
+print_color() {
+	echo -e "${*}${COLOR_RESET}"
+}
+
+print_ok() {
+	print_color "${COLOR_GREEN}${*}"
+}
+
+print_info() {
+	print_color "${COLOR_BLUE}${*}"
+}
+
+print_err() {
+	print_color "${COLOR_RED}${*}" >&2
+}
+
 # $@: message to display before quiting
 err() {
 	ERR+=("${*}")
-	echo "ERROR: ${*}" >&2
+	print_err "ERROR: ${*}"
 }
 
 # $1: variable name
@@ -149,20 +170,20 @@ trap_exit() { local rc error
 
 	if [ "${rc}" -eq 0 ]; then
 		if [ ${#ERR[@]} -ne 0 ]; then
-			echo "Unexpected errors found: ${ERR[*]}"
+			print_err "Unexpected errors found: ${ERR[*]}"
 			return 1
 		fi
 
-		echo "Script executed with success"
+		print_ok "Script executed with success"
 		return 0
 	fi
 
 	echo -n "Last commit: "
 	git log -1 --oneline --no-decorate || true
 
-	echo "Summary of errors:"
+	print_err "Summary of errors:"
 	for error in "${ERR[@]}"; do
-		echo "${error}"
+		print_err "${error}"
 	done
 
 	# in the notif, only the end is displayed
@@ -215,7 +236,7 @@ check_sparse_version() { local last curr
 	curr=$(sparse --version)
 
 	if [ "${curr}" = "${last}" ]; then
-		echo "Using the last version of Sparse: ${curr}"
+		print_ok "Using the last version of Sparse: ${curr}"
 	else
 		err "Not the last version of Sparse: ${curr} < ${last}." \
 		    "Please update the Dockerfile of this action"
@@ -354,7 +375,7 @@ check_sparse_output() { local src warn
 		"net/mptcp/protocol.c")
 			# net/mptcp/protocol.c:2892:24: warning: context imbalance in 'mptcp_sk_clone' - unexpected unlock
 			if [ "$(echo "${warn}" | grep -cE "net/mptcp/protocol.c:[0-9]+:[0-9]+: warning: context imbalance in 'mptcp_sk_clone' - unexpected unlock")" -eq 1 ]; then
-				echo "Ignore the following warning because sk_clone_lock() conditionally acquires the socket lock, (if return value != 0), so we can't annotate the caller as 'release': ${warn}"
+				print_info "Ignore the following warning because sk_clone_lock() conditionally acquires the socket lock, (if return value != 0), so we can't annotate the caller as 'release': ${warn}"
 				return 0
 			fi
 		;;
@@ -363,13 +384,13 @@ check_sparse_output() { local src warn
 			# net/mptcp/pm_netlink.c:622:23: warning: context imbalance in 'mptcp_pm_nl_add_addr_received' - unexpected unlock
 			if [ "$(echo "${warn}" | grep -cE "net/mptcp/pm_netlink.c:[0-9]+:[0-9]+: warning: context imbalance in 'mptcp_pm_create_subflow_or_signal_addr' - unexpected unlock")" -eq 1 ] || \
 			   [ "$(echo "${warn}" | grep -cE "net/mptcp/pm_netlink.c:[0-9]+:[0-9]+: warning: context imbalance in 'mptcp_pm_nl_add_addr_received' - unexpected unlock")" -eq 1 ]; then
-				echo "Ignore the following warning because sparse seems fooled with the for-loop inside the unlocked part: ${warn}"
+				print_info "Ignore the following warning because sparse seems fooled with the for-loop inside the unlocked part: ${warn}"
 				return 0
 			fi
 		;;
 	esac
 
-	echo "Non whitelisted warning: ${warn}"
+	print_err "Non whitelisted warning: ${warn}"
 	return 1
 }
 
@@ -528,11 +549,11 @@ validate_one_commit() {
 }
 
 validate_one_commit_exception() { local rc=0
-	echo "Ignoring the error, only validating the last commit"
+	print_info "Ignoring the error, only validating the last commit"
 
 	validate_one_commit || rc=$?
 
-	echo "WARNING: only one commit was validated"
+	print_err "WARNING: only one commit was validated"
 
 	return ${rc}
 }
@@ -560,10 +581,10 @@ validate_each_commit() { local sha_base sha title commit rc=0
 
 		git checkout --detach -f "${sha}"
 
-		echo "Validating ${commit}"
+		print_info "Validating ${commit}"
 
 		if is_commit_skipped "${title}"; then
-			echo "We can skip this commit: ${commit}"
+			print_info "We can skip this commit: ${commit}"
 		elif ! validate_one_commit; then
 			err "Unable to validate one commit: ${commit}"
 			rc=1

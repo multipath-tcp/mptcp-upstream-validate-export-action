@@ -643,7 +643,7 @@ validate_each_commit() { local sha_base sha title commit rc=0
 	while read -r sha title; do
 		commit="${sha} ${title}"
 
-		git checkout --detach -f "${sha}"
+		git checkout -q --detach -f "${sha}"
 
 		print_info "Validating ${commit}"
 

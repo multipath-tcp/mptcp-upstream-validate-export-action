@@ -35,6 +35,7 @@ SPARSE_URL_BASE="https://mirrors.edge.kernel.org/pub/software/devel/sparse/dist/
 
 COLOR_RED="\E[1;31m"
 COLOR_GREEN="\E[1;32m"
+COLOR_YELLOW="\E[1;33m"
 COLOR_BLUE="\E[1;34m"
 COLOR_RESET="\E[0m"
 
@@ -52,6 +53,20 @@ print_info() {
 
 print_err() {
 	print_color "${COLOR_RED}${*}" >&2
+}
+
+# $1: group (no space), $2: description
+log_section_start() {
+	echo -e "::group::${1} - ${COLOR_YELLOW}${2}${COLOR_RESET}"
+}
+
+# $1: group (no space)
+log_section_start_commit() {
+	log_section_start "${1}" "Commit: $(git log -1 --format="%h %s")"
+}
+
+log_section_end() {
+	echo "::endgroup::"
 }
 
 # $@: message to display before quiting
@@ -227,6 +242,8 @@ check_sparse_version() { local last curr
 		return 0
 	fi
 
+	log_section_start "sparse" "Check Sparse version"
+
 	# Force a rebuild if a new version is available
 	last=$(curl "${SPARSE_URL_BASE}" 2>/dev/null | \
 		grep -o 'sparse-[0-9]\+\.[0-9]\+\.[0-9]\+\.tar' | \
@@ -234,6 +251,8 @@ check_sparse_version() { local last curr
 		sort -uV | \
 		tail -n1)
 	curr=$(sparse --version)
+
+	log_section_end
 
 	if [ "${curr}" = "${last}" ]; then
 		print_ok "Using the last version of Sparse: ${curr}"
@@ -331,6 +350,8 @@ config() {
 		return 0
 	fi
 
+	log_section_start "config" "Set initial kernel config"
+
 	config_base
 	config_arch
 	config_ipv6
@@ -341,7 +362,9 @@ config() {
 	# Here, we want to have a failure if some new MPTCP options are
 	# available not to forget to enable them. We then don't want to run
 	# 'make olddefconfig' which will silently disable these new options.
-	config_mptcp
+	config_mptcp || return ${?}
+
+	log_section_end
 }
 
 
@@ -395,6 +418,8 @@ check_sparse_output() { local src warn
 }
 
 check_compilation_mptcp_extra_warnings() { local src obj warn rc=0
+	log_section_start_commit "make_W=1_C=1"
+
 	for src in net/mptcp/*.c; do
 		obj="${src/%.c/.o}"
 		if [[ "${src}" = *"_test.mod.c" ]]; then
@@ -419,6 +444,12 @@ check_compilation_mptcp_extra_warnings() { local src obj warn rc=0
 		done <<< "$(make C=1 "${obj}" 2>&1 >/dev/null | grep "^\S")"
 	done
 
+	log_section_end
+
+	if [ ${rc} -ne 0 ]; then
+		print_err "Compilation error with make C=1 W=1"
+	fi
+
 	return "${rc}"
 }
 
@@ -428,24 +459,34 @@ check_compilation_mptcp_extra_warnings() { local src obj warn rc=0
 #############
 
 compile_selftests() {
+	log_section_start_commit "selftests"
+
 	if ! KCFLAGS="-Werror" make -C tools/testing/selftests/net/mptcp -j"$(nproc)" -l"$(nproc)"; then
-		err "Unable to compile selftests"
 		write_build_results "fail" "Build error with: make -C tools/testing/selftests/net/mptcp"
+		log_section_end
+		err "Unable to compile selftests"
 		return 1
 	fi
+
+	log_section_end
 }
 
 compile_kernel() {
+	log_section_start_commit "compilation"
+
 	# This is needed because we might change KConfig file in the tree: the
 	# first commit(s) could support some settings, they will then be removed
 	# from the .config file and not be available later when added/modified.
-	config_mptcp
+	config_mptcp || return "${?}"
 
 	if ! KCFLAGS="-Werror" make -j"$(nproc)" -l"$(nproc)"; then
-		err "Unable to compile the kernel"
 		write_build_results "fail" "Build error with: -Werror"
+		log_section_end
+		err "Unable to compile the kernel"
 		return 1
 	fi
+
+	log_section_end
 }
 
 check_compilation_selftests() {
@@ -454,12 +495,17 @@ check_compilation_selftests() {
 		return 0
 	fi
 
+	log_section_start_commit "headers_install"
+
 	# make sure headers are installed
 	if ! make -j"$(nproc)" -l"$(nproc)" headers_install; then
-		err "Unable to build and install the headers"
 		write_build_results "fail" "Build error with: make headers_install"
+		log_section_end
+		err "Unable to build and install the headers"
 		return 1
 	fi
+
+	log_section_end
 
 	compile_selftests
 }
@@ -528,10 +574,18 @@ get_cp_status() {
 }
 
 checkpatch() { local mid sum status
+	log_section_start_commit "checkpatch"
+
 	sum=$(_checkpatch)
 	status=$(get_cp_status "${sum}")
 
 	write_results "${status}" "${sum}" "checkpatch"
+
+	log_section_end
+
+	if [ "${status}" != "success" ]; then
+		print_err "Not Checkpatch compliant: ${sum}"
+	fi
 }
 
 #################

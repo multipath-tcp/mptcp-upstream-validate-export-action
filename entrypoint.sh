@@ -85,7 +85,11 @@ invalid_input() {
 }
 
 ccache_stats() {
+	log_section_start "ccache" "Show ccache stats"
+
 	ccache -s || true
+
+	log_section_end
 }
 
 git_get_current_commit_title() {

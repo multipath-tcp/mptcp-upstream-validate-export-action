@@ -558,12 +558,19 @@ check_compilation() {
 ## Checkpatch ##
 ################
 
+CHECKPATCH_DETAILS="./checkpatch-details.txt"
 _checkpatch() {
 	./scripts/checkpatch.pl \
 		--strict \
 		--color=always \
 		--codespell --codespellfile /usr/lib/python3/dist-packages/codespell_lib/data/dictionary.txt \
 		-g HEAD 2>&1 | tee "${TMPFILE}" >&2
+
+	{
+		echo "==============="
+		cat "${TMPFILE}"
+		echo "==============="
+	 } >> "${CHECKPATCH_DETAILS}"
 
 	grep "^total:" "${TMPFILE}" | tail -n1
 }

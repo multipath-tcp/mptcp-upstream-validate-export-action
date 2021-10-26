@@ -32,6 +32,10 @@ Compile with or without MPTCP support. Default: `with_mptcp`.
 
 Set it to `true` to run checkpatch exclusively. Default: `false`.
 
+### `debug`
+
+Set it to `true` to add more debug (set -x). Default: `false`.
+
 ## Example usage
 
 ```yaml
@@ -43,4 +47,5 @@ with:
   ipv6: with_ipv6
   mptcp: with_mptcp
   checkpatch: false
+  debug: false
 ```

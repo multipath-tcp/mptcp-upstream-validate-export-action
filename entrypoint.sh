@@ -1,4 +1,4 @@
-#! /bin/bash -x
+#! /bin/bash
 #
 # The goal is to validate the 'export' branch of MPTCP Upstream repo. This is
 # done by building and use some static code analysis tools.
@@ -7,6 +7,10 @@
 
 # We should manage all errors in this script
 set -e
+
+if [ "${INPUT_DEBUG}" = "true" ]; then
+	set -x
+fi
 
 # Env vars that can be set to change the behaviour
 VAL_EXP_EACH_COMMIT="${INPUT_EACH_COMMIT:-true}"

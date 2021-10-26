@@ -61,6 +61,7 @@ print_err() {
 
 # $1: group (no space), $2: description
 log_section_start() {
+	echo
 	echo -e "::group::${1} - ${COLOR_YELLOW}${2}${COLOR_RESET}"
 }
 
@@ -71,6 +72,7 @@ log_section_start_commit() {
 
 log_section_end() {
 	echo "::endgroup::"
+	echo
 }
 
 # $@: message to display before quiting

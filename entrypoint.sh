@@ -62,7 +62,7 @@ print_err() {
 # $1: group (no space), $2: description
 log_section_start() {
 	echo
-	echo -e "::group::${1} - ${COLOR_YELLOW}${2}${COLOR_RESET}"
+	echo -e "::group::${1} - ${COLOR_BLUE}${1//_/ }${COLOR_RESET}: ${COLOR_YELLOW}${2}${COLOR_RESET}"
 }
 
 # $1: group (no space)

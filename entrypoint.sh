@@ -24,8 +24,10 @@ export CCACHE_MAXSIZE="${INPUT_CCACHE_MAXSIZE:-5G}"
 # Local vars
 ERR=()
 COMMITS_SKIP=()
-COMMIT_ORIG_TOP="DO-NOT-MERGE: mptcp: enabled by default"
-COMMIT_ORIG_BOTTOM="DO-NOT-MERGE: git markup: net-next"
+COMMIT_ORIG_TOP_NET_NEXT="DO-NOT-MERGE: mptcp: enabled by default"
+COMMIT_ORIG_BOTTOM_NET_NEXT="DO-NOT-MERGE: git markup: net-next"
+COMMIT_ORIG_TOP_NET="DO-NOT-MERGE: mptcp: enabled by default (net)"
+COMMIT_ORIG_BOTTOM_NET="DO-NOT-MERGE: git markup: net"
 COMMIT_TOP="" # filled below
 COMMIT_BOTTOM="" # filled below
 TMPFILE="" # filled below
@@ -103,6 +105,11 @@ git_get_sha_from_commit_title() {
 	git log -1 --grep "^${1}$" --format="format:%H" HEAD
 }
 
+# $1: commit title
+has_commit_in_history() {
+	git_get_sha_from_commit_title "${1}" &>/dev/null
+}
+
 # [ $1: commit msg, default: current branch ]
 is_commit_top() {
 	[ "${1:-$(git_get_current_commit_title)}" = "${COMMIT_TOP}" ]
@@ -123,7 +130,8 @@ is_commit_skipped() { local commit curr
 
 	# No need to validate the DO-NOT-MERGE commits: either "empty" or just
 	# before the top. We don't want to send them anyway
-	if [[ "${curr}" = "DO-NOT-MERGE: "* ]]; then
+	if [[ "${curr}" = "DO-NOT-MERGE: "* ]] ||
+	   [ "${curr}" = "TopGit-driven merge of branches:" ]; then
 		return 0
 	fi
 
@@ -228,10 +236,19 @@ prepare() {
 	COMMIT_TOP="$(git_get_current_commit_title)"
 
 	# Validate the whole export branch if we are at the top
-	if [ "${COMMIT_TOP}" = "${COMMIT_ORIG_TOP}" ]; then
-		COMMIT_BOTTOM="${COMMIT_ORIG_BOTTOM}"
-	else # validate only commits on top of the export branch
-		COMMIT_BOTTOM="${COMMIT_ORIG_TOP}"
+	if [ "${COMMIT_TOP}" = "${COMMIT_ORIG_TOP_NET_NEXT}" ]; then
+		COMMIT_BOTTOM="${COMMIT_ORIG_BOTTOM_NET_NEXT}"
+	elif [ "${COMMIT_TOP}" = "${COMMIT_ORIG_TOP_NET}" ]; then
+		COMMIT_BOTTOM="${COMMIT_ORIG_BOTTOM_NET}"
+	elif has_commit_in_history "${COMMIT_ORIG_TOP_NET_NEXT}"; then
+		# validate only commits on top of the export branch
+		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_NET_NEXT}"
+	elif has_commit_in_history "${COMMIT_ORIG_TOP_NET}"; then
+		# validate only commits on top of the export-net branch
+		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_NET}"
+	else
+		err "Unable to find history related to MPTCP export branches"
+		exit 1
 	fi
 }
 

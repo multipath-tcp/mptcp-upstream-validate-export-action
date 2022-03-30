@@ -340,6 +340,9 @@ config_extras() {
 	# For TRACE_EVENT
 	scripts/config -e TRACEPOINTS_ENABLED
 
+	# For MPTCP BPF
+	scripts/config -e BPF_JIT -e BPF_SYSCALL
+
 	# Compile test headers exported to user-space to ensure they are
 	# self-contained, i.e. compilable as standalone units.
 	scripts/config -e HEADERS_INSTALL -e UAPI_HEADER_TEST

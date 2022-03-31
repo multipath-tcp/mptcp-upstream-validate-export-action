@@ -341,7 +341,7 @@ config_extras() {
 	scripts/config -e TRACEPOINTS_ENABLED
 
 	# For MPTCP BPF
-	scripts/config -e BPF_JIT -e BPF_SYSCALL
+	scripts/config -e MODULES -e BPF_JIT -e BPF_SYSCALL
 
 	# Compile test headers exported to user-space to ensure they are
 	# self-contained, i.e. compilable as standalone units.

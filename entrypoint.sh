@@ -228,6 +228,10 @@ trap_exit() { local rc error
 prepare() {
 	trap 'trap_exit "${?}"' EXIT
 
+	# To avoid this error:
+	#   unsafe repository ('/github/workspace' is owned by someone else)
+	git config --global --add safe.directory "${PWD}" || true
+
 	# Display some stats to check everything is OK with ccache
 	ccache_stats
 

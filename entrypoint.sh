@@ -107,7 +107,7 @@ git_get_sha_from_commit_title() {
 
 # $1: commit title
 has_commit_in_history() {
-	git_get_sha_from_commit_title "${1}" &>/dev/null
+	[ -n "$(git_get_sha_from_commit_title "${1}")" ]
 }
 
 # [ $1: commit msg, default: current branch ]
@@ -250,6 +250,8 @@ prepare() {
 		err "Unable to find history related to MPTCP export branches"
 		exit 1
 	fi
+
+	print_info "Validating commits from '${COMMIT_BOTTOM}' to '${COMMIT_TOP}'"
 }
 
 

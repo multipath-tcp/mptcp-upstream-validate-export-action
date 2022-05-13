@@ -673,6 +673,10 @@ validate_each_commit() { local sha_base sha title commit rc=0
 		return
 	fi
 
+	log_section_start "commits" "Validating from ${sha_base} (${COMMIT_BOTTOM}) to HEAD (${COMMIT_TOP})"
+	git log --reverse --format="%h %s" "${sha_base}..HEAD"
+	log_section_end
+
 	while read -r sha title; do
 		commit="${sha} ${title}"
 

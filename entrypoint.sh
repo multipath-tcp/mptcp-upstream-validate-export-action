@@ -358,12 +358,10 @@ config_extras() {
 }
 
 config_mptcp() {
-	# MPTCP_KUNIT_TESTS has been renamed between 5.12 and 5.13
-	# As long as this modification is in our tree, we need to keep both
 	if [ "${VAL_EXP_MPTCP}" = "with_mptcp" ]; then
-		scripts/config -e MPTCP -e MPTCP_KUNIT_TESTS -e MPTCP_KUNIT_TEST
+		scripts/config -e MPTCP -e MPTCP_KUNIT_TEST
 	elif [ "${VAL_EXP_MPTCP}" = "without_mptcp" ]; then
-		scripts/config -d MPTCP -d MPTCP_KUNIT_TESTS -d MPTCP_KUNIT_TEST
+		scripts/config -d MPTCP -d MPTCP_KUNIT_TEST
 	else
 		invalid_input "VAL_EXP_MPTCP"
 		return 1
@@ -377,8 +375,10 @@ config_mptcp() {
 		invalid_input "VAL_EXP_IPV6"
 		return 1
 	fi
+}
 
-	# Workaround: remove me when DEBUG_NET is in -net
+config_new() {
+	# Introduced in v5.19
 	scripts/config -d DEBUG_NET
 }
 
@@ -398,13 +398,15 @@ config() {
 	config_arch
 	config_ipv6
 	config_extras
+	config_new
 
 	make olddefconfig
 
-	# Here, we want to have a failure if some new MPTCP options are
-	# available not to forget to enable them. We then don't want to run
-	# 'make olddefconfig' which will silently disable these new options.
-	config_mptcp || return ${?}
+	# We apply MPTCP config after because, we want to have a failure if some
+	# new MPTCP options are available but we forget to enable them. We then
+	# don't want to run 'make olddefconfig' after which will silently
+	# disable these new options.
+	config_mptcp
 
 	log_section_end
 }
@@ -516,10 +518,10 @@ compile_selftests() {
 compile_kernel() {
 	log_section_start_commit "compilation"
 
-	# This is needed because we might change KConfig file in the tree: the
-	# first commit(s) could support some settings, they will then be removed
-	# from the .config file and not be available later when added/modified.
-	config_mptcp || return "${?}"
+	# Apply new KConfig: the first commit(s) could not support some configs:
+	# these configs will then be removed from the .config file and not be
+	# available later when added/modified.
+	config_new
 
 	if ! KCFLAGS="-Werror" make -j"$(nproc)" -l"$(nproc)"; then
 		write_build_results "fail" "Build error with: -Werror"

@@ -702,6 +702,7 @@ validate_each_commit() { local sha_base sha title commit rc=0
 
 	if ! is_commit_top; then
 		err "Not at the top after validation: ${commit}"
+		err "Was there a new kconfig option asking for confirmation?"
 		return 1
 	fi
 

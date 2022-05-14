@@ -352,6 +352,9 @@ config_extras() {
 	# Compile test headers exported to user-space to ensure they are
 	# self-contained, i.e. compilable as standalone units.
 	scripts/config -e HEADERS_INSTALL -e UAPI_HEADER_TEST
+
+	# To avoid a prompt, stopping the tests
+	scripts/config -d DEBUG_NET
 }
 
 config_mptcp() {

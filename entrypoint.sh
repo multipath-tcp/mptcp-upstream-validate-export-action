@@ -377,6 +377,9 @@ config_mptcp() {
 		invalid_input "VAL_EXP_IPV6"
 		return 1
 	fi
+
+	# Workaround: remove me when DEBUG_NET is in -net
+	scripts/config -d DEBUG_NET
 }
 
 needs_config() {

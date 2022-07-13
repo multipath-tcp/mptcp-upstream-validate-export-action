@@ -28,6 +28,7 @@ COMMIT_ORIG_TOP_NET_NEXT="DO-NOT-MERGE: mptcp: enabled by default"
 COMMIT_ORIG_BOTTOM_NET_NEXT="DO-NOT-MERGE: git markup: net-next"
 COMMIT_ORIG_TOP_NET="DO-NOT-MERGE: mptcp: enabled by default (net)"
 COMMIT_ORIG_BOTTOM_NET="DO-NOT-MERGE: git markup: net"
+COMMIT_CURR_IS_TOP=0
 COMMIT_TOP="" # filled below
 COMMIT_BOTTOM="" # filled below
 TMPFILE="" # filled below
@@ -115,6 +116,19 @@ is_commit_top() {
 	[ "${1:-$(git_get_current_commit_title)}" = "${COMMIT_TOP}" ]
 }
 
+is_commit_top_cached() {
+	[ "${COMMIT_CURR_IS_TOP}" = 1 ]
+}
+
+# args for is_commit_top
+cache_commit_is_top() {
+	if is_commit_top "${@}"; then
+		COMMIT_CURR_IS_TOP=1
+	else
+		COMMIT_CURR_IS_TOP=0
+	fi
+}
+
 needs_checkpatch() {
 	[ "${VAL_EXP_CHECKPATCH}" = "true" ]
 }
@@ -124,7 +138,7 @@ is_commit_skipped() { local commit curr
 	curr="${1}"
 
 	# We always want to validate the top commit even if it is a DO-NOT-MERGE
-	if is_commit_top "${curr}"; then
+	if is_commit_top_cached; then
 		return 1
 	fi
 
@@ -163,8 +177,8 @@ commit_has_non_mptcp_modified_files() {
 		grep -Ev "^(net/mptcp/|tools/testing/selftests/net/mptcp/)")" ]
 }
 
-each_commit() {
-	[ "${VAL_EXP_EACH_COMMIT}" = "true" ]
+always_build() {
+	[ "${VAL_EXP_EACH_COMMIT}" = "false" ] || is_commit_top_cached
 }
 
 get_mid() { local mid
@@ -535,7 +549,7 @@ compile_kernel() {
 
 check_compilation_selftests() {
 	# no need to compile selftests if we didn't modify them
-	if each_commit && ! commit_has_modified_selftests_code; then
+	if ! always_build && ! commit_has_modified_selftests_code; then
 		return 0
 	fi
 
@@ -556,7 +570,7 @@ check_compilation_selftests() {
 
 check_compilation_mptcp() {
 	# no need to compile with MPTCP if we didn't modify them
-	if each_commit && ! commit_has_modified_mptcp_code; then
+	if ! always_build && ! commit_has_modified_mptcp_code; then
 		return 0
 	fi
 
@@ -568,7 +582,7 @@ check_compilation_mptcp() {
 
 check_compilation_non_mptcp() {
 	# no need to compile without MPTCP if we only changed files in net/mptcp
-	if each_commit && ! commit_has_non_mptcp_modified_files; then
+	if ! always_build && ! commit_has_non_mptcp_modified_files; then
 		return 0
 	fi
 
@@ -691,6 +705,8 @@ validate_each_commit() { local sha_base sha title commit rc=0
 		git checkout -q --detach -f "${sha}"
 
 		print_info "Validating ${commit}"
+
+		cache_commit_is_top "${title}"
 
 		if is_commit_skipped "${title}"; then
 			print_info "We can skip this commit: ${commit}"

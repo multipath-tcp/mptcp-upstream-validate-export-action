@@ -297,7 +297,8 @@ check_sparse_version() { local last curr
 		grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | \
 		sort -uV | \
 		tail -n1)
-	curr=$(sparse --version)
+	# support git (vX.Y.Z-COMMITS-gSHA) and tarball versions (X.Y.Z)
+	curr=$(sparse --version | cut -d- -f1 | sed 's/^v//')
 
 	log_section_end
 

@@ -9,19 +9,16 @@ RUN apt-get update && \
 
 # Sparse
 # Do not forget to change the version and SHA in mptcp-upstream-virtme-docker
-ARG SPARSE_URL="https://mirrors.edge.kernel.org/pub/software/devel/sparse/dist/sparse-0.6.4.tar.xz"
-ARG SPARSE_TARBALL="sparse.tar.xz"
-ARG SPARSE_SHA="6ab28b4991bc6aedbd73550291360aa6ab3df41f59206a9bde9690208a6e387c  ${SPARSE_TARBALL}"
+ARG SPARSE_GIT_URL="git://git.kernel.org/pub/scm/devel/sparse/sparse.git"
+ARG SPARSE_GIT_SHA="ce1a6720f69e6233ec9abd4e9aae5945e05fda41" # include a fix for 'unreplaced' issues
 
 RUN cd /tmp && \
-    curl -L "${SPARSE_URL}" -o "${SPARSE_TARBALL}" && \
-    echo "${SPARSE_SHA}" | sha256sum --check && \
-    tar xJf "${SPARSE_TARBALL}" && \
-    cd "sparse-"* && \
-        make && \
+    git clone "${SPARSE_GIT_URL}" sparse && \
+    cd "sparse" && \
+        make -j"$(nproc)" -l"$(nproc)" && \
         make PREFIX=/usr install && \
         cd .. && \
-    rm -rf "${SPARSE_TARBALL}" "sparse-"*
+    rm -rf "sparse"
 
 # CCache for quicker builds but still with default colours
 ENV PATH "/usr/lib/ccache:${PATH}"

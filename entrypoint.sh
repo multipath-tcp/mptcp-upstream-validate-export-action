@@ -470,13 +470,6 @@ check_sparse_output() { local src warn
 				return 0
 			fi
 		;;
-		"net/mptcp/sched.c")
-			# net/mptcp/sched.c:97:6: warning: symbol 'mptcp_sched_data_set_contexts' was not declared. Should it be static?
-			if [ "$(echo "${warn}" | grep -cE "net/mptcp/sched.c:[0-9]+:[0-9]+: warning: symbol 'mptcp_sched_data_set_contexts' was not declared. Should it be static?")" -eq 1 ]; then
-				print_info "Ignore the following warning because it is used in a commit later on: ${warn}"
-				return 0
-			fi
-		;;
 	esac
 
 	print_err "Non whitelisted warning: ${warn}"

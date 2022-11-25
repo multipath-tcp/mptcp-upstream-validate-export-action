@@ -28,6 +28,10 @@ COMMIT_ORIG_TOP_NET_NEXT="DO-NOT-MERGE: mptcp: enabled by default"
 COMMIT_ORIG_BOTTOM_NET_NEXT="DO-NOT-MERGE: git markup: net-next"
 COMMIT_ORIG_TOP_NET="DO-NOT-MERGE: mptcp: enabled by default (net)"
 COMMIT_ORIG_BOTTOM_NET="DO-NOT-MERGE: git markup: net"
+COMMIT_ORIG_TOP_TOPGIT_NET_NEXT="tgupdate: merge t/upstream base into t/upstream"
+COMMIT_ORIG_TOP_FOR_REVIEW_NET_NEXT="Merge branch 't/upstream' into for-review"
+COMMIT_ORIG_TOP_TOPGIT_NET="tgupdate: merge t/upstream-net base into t/upstream-net"
+COMMIT_ORIG_TOP_FOR_REVIEW_NET="Merge branch 't/upstream-net' into for-review-net"
 COMMIT_CURR_IS_TOP=0
 COMMIT_TOP="" # filled below
 COMMIT_BOTTOM="" # filled below
@@ -264,6 +268,18 @@ prepare() {
 	elif has_commit_in_history "${COMMIT_ORIG_TOP_NET}"; then
 		# validate only commits on top of the export-net branch
 		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_NET}"
+	elif has_commit_in_history "${COMMIT_ORIG_TOP_FOR_REVIEW_NET_NEXT}"; then
+		# validate only commits on top of the for-review branch
+		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_FOR_REVIEW_NET_NEXT}"
+	elif has_commit_in_history "${COMMIT_ORIG_TOP_TOPGIT_NET_NEXT}"; then
+		# validate only commits on top of the t/upstream branch
+		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_TOPGIT_NET_NEXT}"
+	elif has_commit_in_history "${COMMIT_ORIG_TOP_FOR_REVIEW_NET}"; then
+		# validate only commits on top of the for-review-net branch
+		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_FOR_REVIEW_NET}"
+	elif has_commit_in_history "${COMMIT_ORIG_TOP_TOPGIT_NET}"; then
+		# validate only commits on top of the t/upstream-net branch
+		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_TOPGIT_NET}"
 	else
 		err "Unable to find history related to MPTCP export branches"
 		exit 1

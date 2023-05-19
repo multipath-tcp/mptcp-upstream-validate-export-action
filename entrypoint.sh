@@ -472,7 +472,8 @@ check_sparse_output() { local src warn
 	case "${src}" in
 		"net/mptcp/protocol.c")
 			# net/mptcp/protocol.c:2892:24: warning: context imbalance in 'mptcp_sk_clone' - unexpected unlock
-			if [ "$(echo "${warn}" | grep -cE "net/mptcp/protocol.c:[0-9]+:[0-9]+: warning: context imbalance in 'mptcp_sk_clone' - unexpected unlock")" -eq 1 ]; then
+			# net/mptcp/protocol.h:747:20: warning: context imbalance in 'mptcp_sk_clone_init' - unexpected unlock
+			if [ "$(echo "${warn}" | grep -cE "net/mptcp/protocol.[ch]:[0-9]+:[0-9]+: warning: context imbalance in 'mptcp_sk_clone(|_init)' - unexpected unlock")" -eq 1 ]; then
 				print_info "Ignore the following warning because sk_clone_lock() conditionally acquires the socket lock, (if return value != 0), so we can't annotate the caller as 'release': ${warn}"
 				return 0
 			fi

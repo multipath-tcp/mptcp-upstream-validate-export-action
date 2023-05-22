@@ -262,12 +262,6 @@ prepare() {
 		COMMIT_BOTTOM="${COMMIT_ORIG_BOTTOM_NET_NEXT}"
 	elif [ "${COMMIT_TOP}" = "${COMMIT_ORIG_TOP_NET}" ]; then
 		COMMIT_BOTTOM="${COMMIT_ORIG_BOTTOM_NET}"
-	elif has_commit_in_history "${COMMIT_ORIG_TOP_NET_NEXT}"; then
-		# validate only commits on top of the export branch
-		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_NET_NEXT}"
-	elif has_commit_in_history "${COMMIT_ORIG_TOP_NET}"; then
-		# validate only commits on top of the export-net branch
-		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_NET}"
 	elif has_commit_in_history "${COMMIT_ORIG_TOP_FOR_REVIEW_NET_NEXT}"; then
 		# validate only commits on top of the for-review branch
 		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_FOR_REVIEW_NET_NEXT}"
@@ -280,6 +274,12 @@ prepare() {
 	elif has_commit_in_history "${COMMIT_ORIG_TOP_TOPGIT_NET}"; then
 		# validate only commits on top of the t/upstream-net branch
 		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_TOPGIT_NET}"
+	elif has_commit_in_history "${COMMIT_ORIG_TOP_NET_NEXT}"; then
+		# validate only commits on top of the export branch
+		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_NET_NEXT}"
+	elif has_commit_in_history "${COMMIT_ORIG_TOP_NET}"; then
+		# validate only commits on top of the export-net branch
+		COMMIT_BOTTOM="${COMMIT_ORIG_TOP_NET}"
 	else
 		err "Unable to find history related to MPTCP export branches"
 		exit 1

@@ -107,12 +107,12 @@ git_get_current_commit_title() {
 
 # $1: commit title
 git_get_sha_from_commit_title() {
-	git log -1 --grep "^${1}$" --format="format:%H" HEAD
+	git log -1 --grep "^${1}$" --format="format:%H" "${2:-HEAD}"
 }
 
 # $1: commit title
 has_commit_in_history() {
-	[ -n "$(git_get_sha_from_commit_title "${1}")" ]
+	[ -n "$(git_get_sha_from_commit_title "${1}" HEAD~50..)" ]
 }
 
 # [ $1: commit msg, default: current branch ]

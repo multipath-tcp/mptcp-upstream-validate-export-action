@@ -112,7 +112,7 @@ git_get_sha_from_commit_title() {
 
 # $1: commit title
 has_commit_in_history() {
-	[ -n "$(git_get_sha_from_commit_title "${1}" HEAD~50..)" ]
+	[ -n "$(git_get_sha_from_commit_title "${1}" HEAD~99..)" ]
 }
 
 # [ $1: commit msg, default: current branch ]

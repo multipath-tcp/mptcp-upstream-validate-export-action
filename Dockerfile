@@ -15,6 +15,7 @@ ARG SPARSE_GIT_SHA="ce1a6720f69e6233ec9abd4e9aae5945e05fda41" # include a fix fo
 RUN cd /tmp && \
     git clone "${SPARSE_GIT_URL}" sparse && \
     cd "sparse" && \
+        git checkout "${SPARSE_GIT_SHA}" && \
         make -j"$(nproc)" -l"$(nproc)" && \
         make PREFIX=/usr install && \
         cd .. && \

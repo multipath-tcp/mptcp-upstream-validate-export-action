@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:23.10
 
 # dependencies for the script
 RUN apt-get update && \
@@ -10,7 +10,7 @@ RUN apt-get update && \
 # Sparse
 # Do not forget to change the version and SHA in mptcp-upstream-virtme-docker
 ARG SPARSE_GIT_URL="git://git.kernel.org/pub/scm/devel/sparse/sparse.git"
-ARG SPARSE_GIT_SHA="ce1a6720f69e6233ec9abd4e9aae5945e05fda41" # include a fix for 'unreplaced' issues
+ARG SPARSE_GIT_SHA="09411a7a5127516a0741eb1bd8762642fa9197ce" # include a fix for 'unreplaced' issues and llvm 16 (not used)
 
 RUN cd /tmp && \
     git clone "${SPARSE_GIT_URL}" sparse && \

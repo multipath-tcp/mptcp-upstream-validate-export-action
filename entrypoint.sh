@@ -633,9 +633,10 @@ _checkpatch() {
 		-g HEAD 2>&1 | tee "${TMPFILE}" >&2
 
 	{
-		echo "==============="
+		echo "- Commit $(git log --oneline --no-decorate -1 HEAD):"
+		echo "\`\`\`"
 		cat "${TMPFILE}"
-		echo "==============="
+		echo "\`\`\`"
 	 } >> "${CHECKPATCH_DETAILS}"
 
 	grep "^total:" "${TMPFILE}" | tail -n1

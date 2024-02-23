@@ -646,10 +646,15 @@ _checkpatch() {
 		-g HEAD 2>&1 | tee "${TMPFILE}" >&2
 
 	{
-		echo "- Commit $(get_commit_md):"
-		echo "\`\`\`"
-		cat "${TMPFILE}"
-		echo "\`\`\`"
+		echo -n "- Commit $(get_commit_md):"
+		if ! grep -q "^total: 0 errors, 0 warnings, 0 checks" "${TMPFILE}"; then
+			echo
+			echo "\`\`\`"
+			cat "${TMPFILE}"
+			echo "\`\`\`"
+		else
+			echo " no checkpatch issue"
+		fi
 	 } >> "${CHECKPATCH_DETAILS}"
 
 	grep "^total:" "${TMPFILE}" | tail -n1

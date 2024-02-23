@@ -4,7 +4,7 @@ FROM ubuntu:23.10
 RUN apt-get update && \
     apt-get install -y build-essential libncurses5-dev gcc libssl-dev bc bison \
                        libelf-dev flex git curl tar hashalot ccache rsync \
-                       python3-ply python3-git codespell && \
+                       python3-ply python3-git codespell shellcheck && \
     apt-get clean
 
 # Sparse

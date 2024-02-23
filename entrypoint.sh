@@ -172,6 +172,14 @@ commit_has_modified_selftests_code() {
 	git_modified_files | grep -q "^${KSFT_PATH}/"
 }
 
+commit_has_modified_selftests_sh_code() {
+	git_modified_files | grep -q "^${KSFT_PATH}/.*\.sh$"
+}
+
+commit_get_modified_selftests_sh_code() {
+	git_modified_files | grep "^${KSFT_PATH}/.*\.sh$"
+}
+
 commit_has_modified_mptcp_code() {
 	git_modified_files | grep -q "^net/mptcp/"
 }
@@ -672,6 +680,68 @@ checkpatch() { local sum status
 	fi
 }
 
+# $1: file
+SHELLCHECK_DETAILS="./shellcheck-details.txt"
+_shellcheck() { local dname fname workdir
+	dname="$(dirname "${1}")"
+	fname="$(basename "${1}")"
+	workdir="${PWD}"
+
+	cd "${dname}"
+	shellcheck -x "${fname}" | tee "${TMPFILE}" >&2
+	{
+		echo -n "  - ${fname}:"
+		if [ -s "${TMPFILE}" ]; then
+			echo
+			echo "\`\`\`"
+			cat "${TMPFILE}"
+			echo "\`\`\`"
+		else
+			echo " no shellcheck issue"
+		fi
+	 } >> "${SHELLCHECK_DETAILS}"
+	cd "${workdir}"
+
+	if [ -s "${TMPFILE}" ]; then
+		echo "${fname}"
+	fi
+}
+
+shellcheck() { local sum status ksft out
+	log_section_start_commit "shellcheck"
+
+	echo -n "- Commit $(git log --oneline --no-decorate -1 HEAD):" >> "${SHELLCHECK_DETAILS}"
+	if commit_has_modified_selftests_sh_code; then
+		echo >> "${SHELLCHECK_DETAILS}"
+		for ksft in $(commit_get_modified_selftests_sh_code); do
+			out="$(_shellcheck "${ksft}")"
+			if [ -n "${out}" ]; then
+				sum+=" ${out}"
+			fi
+		done
+
+		if [ -n "${sum}" ]; then
+			status="success"
+			sum="No ShellCheck issues"
+		else
+			status="fail"
+			sum="ShellCheck issues:${sum}"
+		fi
+	else
+		status="success"
+		sum="MPTCP selftests files have not been modified"
+		echo " ${sum}">> "${SHELLCHECK_DETAILS}"
+	fi
+
+	write_results "${status}" "${sum}" "shellcheck"
+
+	log_section_end
+
+	if [ "${status}" != "success" ]; then
+		print_err "Not ShellCheck compliant: ${sum}"
+	fi
+}
+
 #################
 ## Validations ##
 #################
@@ -679,6 +749,7 @@ checkpatch() { local sum status
 validate_one_commit() {
 	if needs_checkpatch; then
 		checkpatch
+		shellcheck
 	elif check_compilation; then
 		write_build_results "success" "Build and static analysis OK"
 	else

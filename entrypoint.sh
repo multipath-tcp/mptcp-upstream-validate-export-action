@@ -689,6 +689,8 @@ _shellcheck() { local dname fname workdir
 
 	cd "${dname}"
 	/usr/bin/shellcheck -x "${fname}" 2>&1 | tee "${TMPFILE}" >&2
+	cd "${workdir}"
+
 	{
 		echo -n "  - ${fname}:"
 		if [ -s "${TMPFILE}" ]; then
@@ -700,7 +702,6 @@ _shellcheck() { local dname fname workdir
 			echo " no shellcheck issue"
 		fi
 	 } >> "${SHELLCHECK_DETAILS}"
-	cd "${workdir}"
 
 	if [ -s "${TMPFILE}" ]; then
 		echo "${fname}"

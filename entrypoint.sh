@@ -37,6 +37,7 @@ COMMIT_TOP="" # filled below
 COMMIT_BOTTOM="" # filled below
 TMPFILE="" # filled below
 KSFT_PATH="tools/testing/selftests/net/mptcp"
+COMMIT_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit"
 
 # Sparse
 SPARSE_URL_BASE="https://mirrors.edge.kernel.org/pub/software/devel/sparse/dist/"
@@ -633,6 +634,10 @@ check_compilation() {
 ## Checkpatch ##
 ################
 
+get_commit_md() {
+	git log --format=format:"[%h](${COMMIT_URL}/%H) (\`%s\`)" -1 HEAD
+}
+
 CHECKPATCH_DETAILS="./checkpatch-details.txt"
 _checkpatch() {
 	./scripts/checkpatch.pl \
@@ -641,7 +646,7 @@ _checkpatch() {
 		-g HEAD 2>&1 | tee "${TMPFILE}" >&2
 
 	{
-		echo "- Commit $(git log --oneline --no-decorate -1 HEAD):"
+		echo "- Commit $(get_commit_md):"
 		echo "\`\`\`"
 		cat "${TMPFILE}"
 		echo "\`\`\`"
@@ -711,7 +716,7 @@ _shellcheck() { local dname fname workdir
 shellcheck() { local sum status ksft out
 	log_section_start_commit "shellcheck"
 
-	echo -n "- Commit $(git log --oneline --no-decorate -1 HEAD):" >> "${SHELLCHECK_DETAILS}"
+	echo -n "- Commit $(get_commit_md):" >> "${SHELLCHECK_DETAILS}"
 	if commit_has_modified_selftests_sh_code; then
 		echo >> "${SHELLCHECK_DETAILS}"
 		for ksft in $(commit_get_modified_selftests_sh_code); do

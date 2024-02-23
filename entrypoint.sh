@@ -722,11 +722,11 @@ shellcheck() { local sum status ksft out
 		done
 
 		if [ -n "${sum}" ]; then
-			status="success"
-			sum="No ShellCheck issues"
-		else
 			status="fail"
 			sum="ShellCheck issues:${sum}"
+		else
+			status="success"
+			sum="No ShellCheck issues"
 		fi
 	else
 		status="success"

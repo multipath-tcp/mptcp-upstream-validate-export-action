@@ -656,7 +656,7 @@ get_cp_status() {
 	esac
 }
 
-checkpatch() { local mid sum status
+checkpatch() { local sum status
 	log_section_start_commit "checkpatch"
 
 	sum=$(_checkpatch)

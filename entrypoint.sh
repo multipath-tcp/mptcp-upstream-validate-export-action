@@ -36,6 +36,7 @@ COMMIT_CURR_IS_TOP=0
 COMMIT_TOP="" # filled below
 COMMIT_BOTTOM="" # filled below
 TMPFILE="" # filled below
+KSFT_PATH="tools/testing/selftests/net/mptcp"
 
 # Sparse
 SPARSE_URL_BASE="https://mirrors.edge.kernel.org/pub/software/devel/sparse/dist/"
@@ -168,7 +169,7 @@ git_modified_files() {
 }
 
 commit_has_modified_selftests_code() {
-	git_modified_files | grep -q "^tools/testing/selftests/net/mptcp/"
+	git_modified_files | grep -q "^${KSFT_PATH}/"
 }
 
 commit_has_modified_mptcp_code() {
@@ -178,7 +179,7 @@ commit_has_modified_mptcp_code() {
 commit_has_non_mptcp_modified_files() {
 	# shellcheck disable=SC2143 ## We cannot use 'grep -q' with '-v' here
 	[ -n "$(git_modified_files | \
-		grep -Ev "^(net/mptcp/|tools/testing/selftests/net/mptcp/)")" ]
+		grep -Ev "^(net/mptcp/|${KSFT_PATH}/)")" ]
 }
 
 always_build() {
@@ -537,8 +538,8 @@ check_compilation_mptcp_extra_warnings() { local src obj warn rc=0
 compile_selftests() {
 	log_section_start_commit "selftests"
 
-	if ! KCFLAGS="-Werror" make -C tools/testing/selftests/net/mptcp -j"$(nproc)" -l"$(nproc)"; then
-		write_build_results "fail" "Build error with: make -C tools/testing/selftests/net/mptcp"
+	if ! KCFLAGS="-Werror" make -C "${KSFT_PATH}" -j"$(nproc)" -l"$(nproc)"; then
+		write_build_results "fail" "Build error with: make -C ${KSFT_PATH}"
 		log_section_end
 		err "Unable to compile selftests"
 		return 1

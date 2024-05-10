@@ -162,6 +162,11 @@ is_commit_skipped() { local commit curr
 		fi
 	done
 
+	# Skip empty commits used by b4
+	if git log -1 HEAD | grep -q "^\s\+--- b4-submit-tracking ---$"; then
+		return 0
+	fi
+
 	return 1
 }
 

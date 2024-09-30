@@ -202,7 +202,7 @@ always_build() {
 
 get_mid() { local mid
 	mid=$(git log -1 --format="format:%b" | \
-		grep "^Message-Id: " | \
+		grep -i "^Message-Id: " | \
 		tail -n1 | \
 		awk '{print $2}')
 

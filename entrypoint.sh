@@ -646,7 +646,7 @@ get_commit_md() {
 CHECKPATCH_DETAILS="./checkpatch-details.txt"
 _checkpatch() {
 	./scripts/checkpatch.pl \
-		--strict \
+		--strict --max-line-length=80 \
 		--codespell --codespellfile /usr/lib/python3/dist-packages/codespell_lib/data/dictionary.txt \
 		-g HEAD 2>&1 | tee "${TMPFILE}" >&2
 

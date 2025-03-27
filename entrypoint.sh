@@ -497,7 +497,7 @@ check_sparse_output() { local src warn
 			# These functions have been moved to pm_kernel.c
 			# net/mptcp/pm_netlink.c:507:25: warning: context imbalance in 'mptcp_pm_create_subflow_or_signal_addr' - unexpected unlock
 			# net/mptcp/pm_netlink.c:622:23: warning: context imbalance in 'mptcp_pm_nl_add_addr_received' - unexpected unlock
-			if [ "$(echo "${warn}" | grep -cE "net/mptcp/pm_(netlink|kernel).c:[0-9]+:[0-9]+: warning: context imbalance in '(mptcp_pm_create_subflow_or_signal_addr|mptcp_pm_nl_add_addr_received)' - unexpected unlock")" -eq 1 ]; then
+			if [ "$(echo "${warn}" | grep -cE "net/mptcp/pm_(netlink|kernel).c:[0-9]+:[0-9]+: warning: context imbalance in '((__|)mptcp_pm_create_subflow_or_signal_addr|mptcp_pm_(nl|kernel)_add_addr_received)' - unexpected unlock")" -eq 1 ]; then
 				print_info "Ignore the following warning because sparse seems fooled with the for-loop inside the unlocked part: ${warn}"
 				return 0
 			fi

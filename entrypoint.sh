@@ -380,7 +380,8 @@ config_ipv6() {
 config_extras() {
 	# to avoid warnings/errors, enable KUnit without the tests
 	scripts/config -e KUNIT \
-	               -d KUNIT_ALL_TESTS
+	               -d KUNIT_ALL_TESTS \
+	               --set-val FRAME_WARN 2048
 
 	# For INET_MPTCP_DIAG
 	scripts/config -e INET_DIAG \

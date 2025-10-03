@@ -22,13 +22,13 @@ RUN cd /tmp && \
     rm -rf "sparse"
 
 # CCache for quicker builds but still with default colours
-ENV PATH "/usr/lib/ccache:${PATH}"
-ENV CCACHE_COMPRESS "true"
-ENV GCC_COLORS "error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01"
+ENV PATH="/usr/lib/ccache:${PATH}"
+ENV CCACHE_COMPRESS="true"
+ENV GCC_COLORS="error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01"
 # The home dir of the host is not the same as the one of the docker environment
-ENV CCACHE_DIR "/github/workspace/.ccache"
+ENV CCACHE_DIR="/github/workspace/.ccache"
 # Remove the timestamp to improve CCache hit
-ENV KBUILD_BUILD_TIMESTAMP "0"
+ENV KBUILD_BUILD_TIMESTAMP="0"
 
 COPY entrypoint.sh /
 

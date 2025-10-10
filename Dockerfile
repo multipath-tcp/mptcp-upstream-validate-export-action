@@ -1,4 +1,4 @@
-FROM ubuntu:25.04
+FROM ubuntu:25.10
 
 # dependencies for the script
 RUN apt-get update && \

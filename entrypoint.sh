@@ -659,7 +659,7 @@ _checkpatch() {
 			cat "${TMPFILE}"
 			echo "\`\`\`"
 		else
-			echo " no checkpatch issue"
+			echo " no checkpatch issues"
 		fi
 	 } >> "${CHECKPATCH_DETAILS}"
 
@@ -715,7 +715,7 @@ _shellcheck() { local dname fname workdir
 			cat "${TMPFILE}"
 			echo "\`\`\`"
 		else
-			echo " no shellcheck issue"
+			echo " no shellcheck issues"
 		fi
 	 } >> "${SHELLCHECK_DETAILS}"
 

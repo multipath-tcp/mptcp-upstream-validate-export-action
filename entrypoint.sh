@@ -759,6 +759,38 @@ shellcheck() { local sum status ksft out
 	fi
 }
 
+KDOC_DETAILS="./kdoc-details.txt"
+kdoc() { local status out sum
+	log_section_start_commit "KDoc"
+
+	echo -n "- Commit $(get_commit_md):" >> "${KDOC_DETAILS}"
+	out="$(./scripts/kernel-doc -Wall -none net/mptcp/ include/net/mptcp.h \
+		include/uapi/linux/mptcp*.h include/trace/events/mptcp.h 2>&1)"
+
+	if [ -n "${out}" ]; then
+		status="fail"
+		sum="KDoc issues: $(echo "${out}" | wc -l)"
+		{
+			echo
+			echo "\`\`\`"
+			echo "${out}"
+			echo "\`\`\`"
+		} >> "${KDOC_DETAILS}"
+	else
+		status="success"
+		sum="No KDoc issues"
+		echo " ${sum}" >> "${KDOC_DETAILS}"
+	fi
+
+	write_results "${status}" "${sum}" "kdoc"
+
+	log_section_end
+
+	if [ "${status}" != "success" ]; then
+		print_err "Not KDoc compliant: ${sum}"
+	fi
+}
+
 #################
 ## Validations ##
 #################
@@ -767,6 +799,7 @@ validate_one_commit() {
 	if needs_checkpatch; then
 		checkpatch
 		shellcheck
+		kdoc
 	elif check_compilation; then
 		write_build_results "success" "Build and static analysis OK"
 	else

@@ -323,7 +323,8 @@ check_sparse_version() { local last curr
 	log_section_start "sparse" "Check Sparse version"
 
 	# Force a rebuild if a new version is available
-	last=$(curl "${SPARSE_URL_BASE}" 2>/dev/null | \
+	last=$(curl --no-progress-meter --connect-timeout 30 \
+		"${SPARSE_URL_BASE}" | \
 		grep -o 'sparse-[0-9]\+\.[0-9]\+\.[0-9]\+\.tar' | \
 		grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | \
 		sort -uV | \
@@ -335,8 +336,10 @@ check_sparse_version() { local last curr
 
 	if [ "${curr}" = "${last}" ]; then
 		print_ok "Using the last version of Sparse: ${curr}"
+	elif [ -z "${last}" ]; then
+		print_info "WARNING: no remote version found, skip"
 	else
-		err "Not the last version of Sparse: ${curr} < ${last}." \
+		err "Not the last version of Sparse: '${curr}' vs. '${last}'." \
 		    "Please update the Dockerfile of this action"
 		return 1
 	fi

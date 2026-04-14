@@ -338,6 +338,8 @@ check_sparse_version() { local last curr
 		print_ok "Using the last version of Sparse: ${curr}"
 	elif [ -z "${last}" ]; then
 		print_info "WARNING: no remote version found, skip"
+	elif [ "$(printf "%s\n%s" "${curr}" "${last}" | sort -V | tail -n1)" = "${curr}" ]; then
+		print_info "WARNING: the current version (${curr}) is newer than the remote one (${last})"
 	else
 		err "Not the last version of Sparse: '${curr}' vs. '${last}'." \
 		    "Please update the Dockerfile of this action"
